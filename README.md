@@ -30,13 +30,17 @@ A Raspberry Pi–friendly Reddit bot that scans a subreddit for book mentions (e
 Run this in the terminal:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOURUSERNAME/bookbot/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/YOURUSERNAME/bookbot/main/install.sh
+```
+
 Or clone manually:
 
+```bash
 git clone https://github.com/YOURUSERNAME/bookbot.git ~/bookbot
 cd ~/bookbot
 chmod +x install.sh
 ./install.sh
+```
 
 2. Configure credentials
 Edit config.ini and add your Reddit and email credentials:
@@ -52,6 +56,7 @@ to = your_email@gmail.com
 password = your_app_password
 smtp_server = smtp.gmail.com
 smtp_port = 587
+
 📌 If using Gmail:
 
 Enable 2FA

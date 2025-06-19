@@ -14,16 +14,14 @@ REDDIT_SECRET = config["reddit"]["client_secret"]
 REDDIT_USER_AGENT = config["reddit"]["user_agent"]
 
 SUBREDDIT_NAME = "lgbtbooks"
-POST_LIMIT = 10
+POST_LIMIT = 10  # Set to None to fetch all posts
 
 console = Console()
 
-# Regex: [Title by Author]
 def extract_books(text):
     pattern = r"\[(.*?)\s+by\s+(.*?)\]"
     return [(t.strip(), a.strip()) for t, a in re.findall(pattern, text, re.IGNORECASE)]
 
-# Open Library API lookup
 def lookup_open_library(title, author):
     url = f"https://openlibrary.org/search.json?title={title}&author={author}"
     r = requests.get(url)
@@ -43,20 +41,16 @@ def lookup_open_library(title, author):
         "isbn13": next((i for i in doc.get("isbn", []) if len(i) == 13), "N/A")
     }
 
-# Print result using Rich
 def display_book(book):
     table = Table(title=f"[bold magenta]{book['title']}[/] by {book['author']}")
     table.add_column("Field", style="cyan", no_wrap=True)
     table.add_column("Value", style="white")
-
     table.add_row("Tags", ", ".join(book["tags"]) if book["tags"] else "None")
     table.add_row("Cover URL", book["cover_url"])
     table.add_row("ISBN-13", book["isbn13"])
-
     console.print(table)
     console.print("-" * 60)
 
-# Main logic
 def main():
     reddit = praw.Reddit(
         client_id=REDDIT_CLIENT_ID,
@@ -67,9 +61,11 @@ def main():
     subreddit = reddit.subreddit(SUBREDDIT_NAME)
     seen = set()
 
-    console.print(f"[green]Searching r/{SUBREDDIT_NAME} for book mentions...[/]\n")
+    console.print(f"[green]Scanning r/{SUBREDDIT_NAME} for book mentions...[/]\n")
 
-    for post in subreddit.new(limit=POST_LIMIT):
+    posts = subreddit.new(limit=POST_LIMIT) if POST_LIMIT else subreddit.new(limit=None)
+
+    for post in posts:
         content = f"{post.title} {post.selftext}"
         mentions = extract_books(content)
 
@@ -84,6 +80,8 @@ def main():
                 display_book(book)
             else:
                 console.print(f"[yellow]No data found for: {title} by {author}[/]")
+
+    console.print(f"[cyan]✅ Book scan complete.[/]")
 
 if __name__ == "__main__":
     main()

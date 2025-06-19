@@ -1,5 +1,6 @@
 [Desktop Entry]
-Name=Queernook Book Bot
+Name=Book Bot
+Comment=Scan Reddit for book mentions
 Exec=lxterminal -e "/home/pi/bookbot/run.sh"
 Icon=utilities-terminal
 Terminal=false

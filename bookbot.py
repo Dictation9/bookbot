@@ -3,27 +3,21 @@ import configparser
 import requests
 import praw
 import logging
+import os
 from rich.console import Console
 from rich.table import Table
+import csv
 
 # Set up error logging
 logging.basicConfig(filename="error.log", level=logging.ERROR,
                     format="%(asctime)s [%(levelname)s] %(message)s")
 
 # Load config
-import os
 config = configparser.ConfigParser()
-
 if not os.path.exists("config.ini"):
     print("❌ config.ini is missing. Please create it from config.example.ini.")
     exit(1)
 config.read("config.ini")
-
-EMAIL_FROM = config["email"]["from"]
-EMAIL_TO = config["email"]["to"]
-EMAIL_PASSWORD = config["email"]["password"]
-SMTP_SERVER = config["email"]["smtp_server"]
-SMTP_PORT = int(config["email"]["smtp_port"])
 
 REDDIT_CLIENT_ID = config["reddit"]["client_id"]
 REDDIT_SECRET = config["reddit"]["client_secret"]
@@ -58,7 +52,6 @@ def lookup_open_library(title, author):
     }
 
 def display_book(book):
-                logging.info(f"Found book mention: {book['title']} by {book['author']}"):
     table = Table(title=f"[bold magenta]{book['title']}[/] by {book['author']}")
     table.add_column("Field", style="cyan", no_wrap=True)
     table.add_column("Value", style="white")
@@ -68,6 +61,36 @@ def display_book(book):
     console.print(table)
     console.print("-" * 60)
 
+def write_book_to_csv(book, csv_path="book_mentions.csv"):
+    # Read existing entries to avoid duplicates
+    existing = set()
+    try:
+        with open(csv_path, newline='', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                key = (row['title'].strip().lower(), row['author'].strip().lower())
+                existing.add(key)
+    except FileNotFoundError:
+        pass  # File will be created
+
+    key = (book['title'].strip().lower(), book['author'].strip().lower())
+    if key in existing:
+        return  # Duplicate, do not write
+
+    # Write new entry
+    write_header = not os.path.exists(csv_path)
+    with open(csv_path, 'a', newline='', encoding='utf-8') as csvfile:
+        fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+        writer.writerow({
+            'title': book['title'],
+            'author': book['author'],
+            'isbn13': book['isbn13'],
+            'tags': ', '.join(book['tags']) if book['tags'] else '',
+            'cover_url': book['cover_url']
+        })
 
 def auto_update():
     import subprocess
@@ -114,32 +137,27 @@ def main():
     seen = set()
 
     console.print(f"[green]Scanning r/{SUBREDDIT_NAME} for book mentions...[/]\n")
-    logging.info("📦 Book Bot started scanning.")
 
     posts = subreddit.new(limit=POST_LIMIT) if POST_LIMIT else subreddit.new(limit=None)
 
     for post in posts:
-        logging.info(f"Scanning post: {post.title}")
         content = f"{post.title} {post.selftext}"
         mentions = extract_books(content)
 
         for title, author in mentions:
             key = (title.lower(), author.lower())
             if key in seen:
-                logging.info(f"Skipped duplicate: {title} by {author}")
                 continue
             seen.add(key)
 
             book = lookup_open_library(title, author)
             if book:
+                write_book_to_csv(book)
                 display_book(book)
-                logging.info(f"Found book mention: {book['title']} by {book['author']}")
             else:
                 console.print(f"[yellow]No data found for: {title} by {author}[/]")
-                logging.info(f"No data found for: {title} by {author}")
 
     console.print(f"[cyan]✅ Book scan complete.[/]")
-    logging.info("✅ Book scan complete.")
 
 if __name__ == "__main__":
     try:

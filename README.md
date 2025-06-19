@@ -48,7 +48,7 @@ Edit config.ini and add your Reddit and email credentials:
 [reddit]
 client_id = your_client_id
 client_secret = your_client_secret
-user_agent = queernook-bookbot
+user_agent = bookbot
 
 [email]
 from = your_email@gmail.com

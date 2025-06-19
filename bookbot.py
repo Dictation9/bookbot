@@ -171,7 +171,7 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
     if key in existing:
         return
     write_header = not os.path.exists(csv_path)
-    fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url', 'romance_io_url', 'google_books_url', 'datetime_added', 'reddit_created_utc', 'reddit_created_date']
+    fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url', 'romance_io_url', 'google_books_url', 'steam', 'datetime_added', 'reddit_created_utc', 'reddit_created_date']
     with open(csv_path, 'a', newline='', encoding='utf-8') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         if write_header:
@@ -184,6 +184,7 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
             'cover_url': book.get('cover_url', 'N/A'),
             'romance_io_url': book.get('romance_io_url', ''),
             'google_books_url': book.get('google_books_url', ''),
+            'steam': book.get('steam', ''),
             'datetime_added': datetime.datetime.now().isoformat(),
             'reddit_created_utc': book.get('reddit_created_utc', ''),
             'reddit_created_date': book.get('reddit_created_date', '')
@@ -225,6 +226,46 @@ def extract_romance_io_link(text):
     match = re.search(r'(https?://www\.romance\.io/[\w\-/\?=&#.]+)', text)
     return match.group(1) if match else ''
 
+def extract_romance_bot_data(text):
+    # Extract romance.io link
+    link_match = re.search(r'(https?://www\.romance\.io/[\w\-/\?=&#.]+)', text)
+    romance_link = link_match.group(1) if link_match else ''
+    # Extract topics (e.g. 'Topics: topic1, topic2, ...')
+    topics_match = re.search(r'Topics?:\s*([^\n]+)', text, re.IGNORECASE)
+    topics = [t.strip() for t in topics_match.group(1).split(',')] if topics_match else []
+    # Extract steam level (e.g. 'Steam: Open door')
+    steam_match = re.search(r'Steam:\s*([^\n]+)', text, re.IGNORECASE)
+    steam = steam_match.group(1).strip() if steam_match else ''
+    return romance_link, topics, steam
+
+def update_csv_with_romance_bot(title, author, romance_io_url, topics, steam, csv_path="book_mentions.csv"):
+    key = (title.strip().lower(), author.strip().lower())
+    updated = False
+    rows = []
+    try:
+        with open(csv_path, newline='', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                row_key = (row['title'].strip().lower(), row['author'].strip().lower())
+                if row_key == key:
+                    if romance_io_url:
+                        row['romance_io_url'] = romance_io_url
+                    if topics:
+                        row['tags'] = ', '.join(topics)
+                    if steam:
+                        row['steam'] = steam
+                    updated = True
+                rows.append(row)
+    except FileNotFoundError:
+        return False
+    if updated:
+        with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+            fieldnames = rows[0].keys()
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+    return updated
+
 def process_comments(post, seen):
     try:
         post.comments.replace_more(limit=None)
@@ -233,6 +274,14 @@ def process_comments(post, seen):
             reddit_created_utc = getattr(comment, 'created_utc', None)
             reddit_created_date = datetime.datetime.utcfromtimestamp(reddit_created_utc).isoformat() if reddit_created_utc else ''
             romance_link = extract_romance_io_link(comment.body)
+            # If this is a romance-bot comment, try to update existing CSV entries
+            if getattr(comment, 'author', None) and str(comment.author).lower() == 'romance-bot':
+                for title, author in comment_mentions:
+                    romance_bot_link, romance_bot_topics, romance_bot_steam = extract_romance_bot_data(comment.body)
+                    updated = update_csv_with_romance_bot(title, author, romance_bot_link, romance_bot_topics, romance_bot_steam)
+                    if updated:
+                        activity_logger.info(f"Updated CSV with romance-bot data for: {title} by {author}")
+                continue  # Don't add new entries for romance-bot comments
             for title, author in comment_mentions:
                 key = (title.lower(), author.lower())
                 if key in seen:
@@ -243,6 +292,7 @@ def process_comments(post, seen):
                     book['reddit_created_utc'] = reddit_created_utc
                     book['reddit_created_date'] = reddit_created_date
                     book['romance_io_url'] = romance_link  # Always include romance.io link if present
+                    book['steam'] = ''
                     activity_logger.info(f"Found book mention in comment: {book['title']} by {book['author']}")
                     write_book_to_csv(book)
                     display_book(book)
@@ -256,6 +306,7 @@ def process_comments(post, seen):
                         'cover_url': 'N/A',
                         'romance_io_url': romance_link,
                         'google_books_url': '',
+                        'steam': '',
                         'reddit_created_utc': reddit_created_utc,
                         'reddit_created_date': reddit_created_date
                     }
@@ -267,6 +318,7 @@ def process_comments(post, seen):
                 if romance_book:
                     romance_book['reddit_created_utc'] = reddit_created_utc
                     romance_book['reddit_created_date'] = reddit_created_date
+                    romance_book['steam'] = ''
                     activity_logger.info(f"Found book mention in comment on romance.io: {romance_book['title']} by {romance_book['author']}")
                     write_book_to_csv(romance_book)
                     display_book(romance_book)
@@ -275,6 +327,7 @@ def process_comments(post, seen):
                     if google_book:
                         google_book['reddit_created_utc'] = reddit_created_utc
                         google_book['reddit_created_date'] = reddit_created_date
+                        google_book['steam'] = ''
                         activity_logger.info(f"Found book mention in comment on Google Books: {google_book['title']} by {google_book['author']}")
                         write_book_to_csv(google_book)
                         display_book(google_book)
@@ -287,6 +340,7 @@ def process_comments(post, seen):
                             'cover_url': 'N/A',
                             'romance_io_url': '',
                             'google_books_url': '',
+                            'steam': '',
                             'reddit_created_utc': reddit_created_utc,
                             'reddit_created_date': reddit_created_date
                         }
@@ -383,6 +437,7 @@ def main():
                         'cover_url': 'N/A',
                         'romance_io_url': '',
                         'google_books_url': '',
+                        'steam': '',
                         'reddit_created_utc': reddit_created_utc,
                         'reddit_created_date': reddit_created_date
                     }

@@ -6,6 +6,7 @@ import logging
 import os
 from rich.console import Console
 from rich.table import Table
+import csv
 
 # Set up error logging
 logging.basicConfig(filename="error.log", level=logging.ERROR,
@@ -60,6 +61,36 @@ def display_book(book):
     console.print(table)
     console.print("-" * 60)
 
+def write_book_to_csv(book, csv_path="book_mentions.csv"):
+    # Read existing entries to avoid duplicates
+    existing = set()
+    try:
+        with open(csv_path, newline='', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                key = (row['title'].strip().lower(), row['author'].strip().lower())
+                existing.add(key)
+    except FileNotFoundError:
+        pass  # File will be created
+
+    key = (book['title'].strip().lower(), book['author'].strip().lower())
+    if key in existing:
+        return  # Duplicate, do not write
+
+    # Write new entry
+    write_header = not os.path.exists(csv_path)
+    with open(csv_path, 'a', newline='', encoding='utf-8') as csvfile:
+        fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+        writer.writerow({
+            'title': book['title'],
+            'author': book['author'],
+            'isbn13': book['isbn13'],
+            'tags': ', '.join(book['tags']) if book['tags'] else '',
+            'cover_url': book['cover_url']
+        })
 
 def auto_update():
     import subprocess
@@ -121,6 +152,7 @@ def main():
 
             book = lookup_open_library(title, author)
             if book:
+                write_book_to_csv(book)
                 display_book(book)
             else:
                 console.print(f"[yellow]No data found for: {title} by {author}[/]")

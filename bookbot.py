@@ -62,13 +62,28 @@ def lookup_open_library(title, author):
     if not docs:
         return None
 
-    doc = docs[0]
+    # Try to find the best match for both title and author
+    doc = None
+    for d in docs:
+        doc_title = d.get("title", "").lower()
+        doc_authors = " ".join(d.get("author_name", [])).lower()
+        if title.lower() in doc_title and author.lower() in doc_authors:
+            doc = d
+            break
+    if not doc:
+        doc = docs[0]  # fallback to first
+
+    isbn_list = doc.get("isbn", [])
+    isbn13 = next((i for i in isbn_list if len(i) == 13), None)
+    isbn10 = next((i for i in isbn_list if len(i) == 10), None)
+    isbn_value = isbn13 or isbn10 or (isbn_list[0] if isbn_list else "N/A")
+
     return {
         "title": doc.get("title", title),
         "author": ", ".join(doc.get("author_name", [author])),
         "tags": doc.get("subject", [])[:10],
         "cover_url": f"https://covers.openlibrary.org/b/id/{doc['cover_i']}-L.jpg" if doc.get("cover_i") else "N/A",
-        "isbn13": next((i for i in doc.get("isbn", []) if len(i) == 13), "N/A")
+        "isbn13": isbn_value
     }
 
 def display_book(book):

@@ -7,6 +7,8 @@ import os
 from rich.console import Console
 from rich.table import Table
 import csv
+import time
+import prawcore
 
 # Set up error logging
 logging.basicConfig(filename="error.log", level=logging.ERROR,
@@ -73,8 +75,18 @@ def display_book(book):
     console.print(table)
     console.print("-" * 60)
 
+def robust_lookup_open_library(title, author, retries=3, delay=2):
+    for attempt in range(retries):
+        try:
+            return lookup_open_library(title, author)
+        except Exception as e:
+            if attempt < retries - 1:
+                time.sleep(delay)
+            else:
+                activity_logger.error(f"Open Library lookup failed for {title} by {author}: {e}")
+                return None
+
 def write_book_to_csv(book, csv_path="book_mentions.csv"):
-    # Read existing entries to avoid duplicates
     existing = set()
     try:
         with open(csv_path, newline='', encoding='utf-8') as csvfile:
@@ -83,13 +95,10 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
                 key = (row['title'].strip().lower(), row['author'].strip().lower())
                 existing.add(key)
     except FileNotFoundError:
-        pass  # File will be created
-
+        pass
     key = (book['title'].strip().lower(), book['author'].strip().lower())
     if key in existing:
-        return  # Duplicate, do not write
-
-    # Write new entry
+        return
     write_header = not os.path.exists(csv_path)
     with open(csv_path, 'a', newline='', encoding='utf-8') as csvfile:
         fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url']
@@ -103,6 +112,7 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
             'tags': ', '.join(book['tags']) if book['tags'] else '',
             'cover_url': book['cover_url']
         })
+        csvfile.flush()
     activity_logger.info(f"Wrote book to CSV: {book['title']} by {book['author']}")
 
 def auto_update():
@@ -135,66 +145,85 @@ def send_test_email():
     except Exception as e:
         print(f"❌ Failed to send test email: {e}")
 
+def process_comments(post, seen):
+    try:
+        post.comments.replace_more(limit=None)
+        for comment in post.comments.list():
+            comment_mentions = extract_books(comment.body)
+            for title, author in comment_mentions:
+                key = (title.lower(), author.lower())
+                if key in seen:
+                    continue
+                seen.add(key)
+                book = robust_lookup_open_library(title, author)
+                if book:
+                    activity_logger.info(f"Found book mention in comment: {book['title']} by {book['author']}")
+                    write_book_to_csv(book)
+                    display_book(book)
+                else:
+                    console.print(f"[yellow]No data found for: {title} by {author}[/]")
+    except prawcore.exceptions.RateLimitExceeded as e:
+        activity_logger.error(f"Rate limit exceeded while processing comments: {e}")
+        time.sleep(e.sleep_time + 1)
+        process_comments(post, seen)
+    except Exception as e:
+        activity_logger.error(f"Error scanning comments for post {post.id}: {e}")
+
 def main():
     send_test_email()
-
     auto_update()
-
     activity_logger.info(f"Scanning r/{SUBREDDIT_NAME} for book mentions...")
-
     reddit = praw.Reddit(
         client_id=REDDIT_CLIENT_ID,
         client_secret=REDDIT_SECRET,
         user_agent=REDDIT_USER_AGENT
     )
-
     subreddit = reddit.subreddit(SUBREDDIT_NAME)
     seen = set()
-
     console.print(f"[green]Scanning r/{SUBREDDIT_NAME} for book mentions...[/]\n")
-
     posts = subreddit.new(limit=POST_LIMIT) if POST_LIMIT else subreddit.new(limit=None)
-
     for post in posts:
         content = f"{post.title} {post.selftext}"
         mentions = extract_books(content)
-
         for title, author in mentions:
             key = (title.lower(), author.lower())
             if key in seen:
                 continue
             seen.add(key)
-
-            book = lookup_open_library(title, author)
+            book = robust_lookup_open_library(title, author)
             if book:
                 activity_logger.info(f"Found book mention: {book['title']} by {book['author']}")
                 write_book_to_csv(book)
                 display_book(book)
             else:
                 console.print(f"[yellow]No data found for: {title} by {author}[/]")
-
-        # Scan all comments for book mentions
-        try:
-            post.comments.replace_more(limit=None)
-            for comment in post.comments.list():
-                comment_mentions = extract_books(comment.body)
-                for title, author in comment_mentions:
-                    key = (title.lower(), author.lower())
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    book = lookup_open_library(title, author)
-                    if book:
-                        activity_logger.info(f"Found book mention in comment: {book['title']} by {book['author']}")
-                        write_book_to_csv(book)
-                        display_book(book)
-                    else:
-                        console.print(f"[yellow]No data found for: {title} by {author}[/]")
-        except Exception as e:
-            activity_logger.error(f"Error scanning comments for post {post.id}: {e}")
-
+        process_comments(post, seen)
     activity_logger.info(f"✅ Book scan complete.")
     console.print(f"[cyan]✅ Book scan complete.[/]")
+
+def livestream_subreddit():
+    reddit = praw.Reddit(
+        client_id=REDDIT_CLIENT_ID,
+        client_secret=REDDIT_SECRET,
+        user_agent=REDDIT_USER_AGENT
+    )
+    subreddit = reddit.subreddit(SUBREDDIT_NAME)
+    seen = set()
+    activity_logger.info(f"Livestreaming r/{SUBREDDIT_NAME} for new posts and comments...")
+    for post in subreddit.stream.submissions(skip_existing=True):
+        content = f"{post.title} {post.selftext}"
+        mentions = extract_books(content)
+        for title, author in mentions:
+            key = (title.lower(), author.lower())
+            if key in seen:
+                continue
+            seen.add(key)
+            book = robust_lookup_open_library(title, author)
+            if book:
+                activity_logger.info(f"[LIVE] Found book mention: {book['title']} by {book['author']}")
+                write_book_to_csv(book)
+                display_book(book)
+        process_comments(post, seen)
 
 if __name__ == "__main__":
     try:

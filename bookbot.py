@@ -10,6 +10,7 @@ import csv
 import time
 import prawcore
 from bs4 import BeautifulSoup
+import datetime
 
 # Set up error logging
 logging.basicConfig(filename="error.log", level=logging.ERROR,
@@ -125,7 +126,7 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
     if key in existing:
         return
     write_header = not os.path.exists(csv_path)
-    fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url', 'romance_io_url']
+    fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url', 'romance_io_url', 'datetime_added']
     with open(csv_path, 'a', newline='', encoding='utf-8') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         if write_header:
@@ -136,7 +137,8 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
             'isbn13': book.get('isbn13', 'N/A'),
             'tags': ', '.join(book.get('tags', [])) if book.get('tags') else '',
             'cover_url': book.get('cover_url', 'N/A'),
-            'romance_io_url': book.get('romance_io_url', '')
+            'romance_io_url': book.get('romance_io_url', ''),
+            'datetime_added': datetime.datetime.now().isoformat()
         })
         csvfile.flush()
     activity_logger.info(f"Wrote book to CSV: {book['title']} by {book['author']}")

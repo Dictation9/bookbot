@@ -11,6 +11,7 @@ pip install -r requirements.txt
 
 echo "[3/5] Making launcher executable..."
 chmod +x run.sh
+chmod +x cron_setup.sh
 chmod +x bookbot.desktop
 
 echo "[4/5] Creating desktop shortcut..."

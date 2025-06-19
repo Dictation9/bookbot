@@ -43,7 +43,8 @@ SMTP_SERVER = config["email"]["smtp_server"]
 SMTP_PORT = int(config["email"]["smtp_port"])
 
 def extract_books(text):
-    pattern = r"\[(.*?)\s+by\s+(.*?)\]"
+    # Matches {Book Title by Author} with curly braces
+    pattern = r"\{([^\{\}]+?)\s+by\s+([^\{\}]+?)\}"
     return [(t.strip(), a.strip()) for t, a in re.findall(pattern, text, re.IGNORECASE)]
 
 def lookup_open_library(title, author):

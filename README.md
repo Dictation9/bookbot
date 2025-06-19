@@ -67,7 +67,8 @@ Generate an App Password
 ```bash
 cd ~/bookbot
 source venv/bin/activate
-python3 bookbot.py ```
+python3 bookbot.py
+```
 
 🖱️ Run from desktop
 Find "Book Bot" on your desktop
@@ -82,15 +83,15 @@ These are auto-installed with cron_setup.sh.
 📁 Files Included
 
 File	Description
-*bookbot.py	Main Reddit book scraper
-*send_csv_email.py	Sends the CSV via email
-*storage_alert.py	Emails you when disk is low
-*config.ini	Your Reddit/email credentials
-*book_mentions.csv	Book database (auto-generated)
-*install.sh	Sets up virtual environment, deps, shortcuts
-*cron_setup.sh	Installs scheduled tasks
-*bookbot.desktop	Desktop launcher
-*run.sh	Script that runs bookbot.py via terminal
+-bookbot.py	Main Reddit book scraper
+-send_csv_email.py	Sends the CSV via email
+-storage_alert.py	Emails you when disk is low
+-config.ini	Your Reddit/email credentials
+-book_mentions.csv	Book database (auto-generated)
+-install.sh	Sets up virtual environment, deps, shortcuts
+-cron_setup.sh	Installs scheduled tasks
+-bookbot.desktop	Desktop launcher
+-run.sh	Script that runs bookbot.py via terminal
 
 ---
 

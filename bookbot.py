@@ -3,6 +3,7 @@ import configparser
 import requests
 import praw
 import logging
+import os
 from rich.console import Console
 from rich.table import Table
 

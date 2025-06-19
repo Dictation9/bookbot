@@ -11,6 +11,12 @@ import csv
 # Set up error logging
 logging.basicConfig(filename="error.log", level=logging.ERROR,
                     format="%(asctime)s [%(levelname)s] %(message)s")
+# Set up activity logging
+activity_logger = logging.getLogger("bot_activity")
+activity_logger.setLevel(logging.INFO)
+activity_handler = logging.FileHandler("bot.log")
+activity_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+activity_logger.addHandler(activity_handler)
 
 # Load config
 config = configparser.ConfigParser()
@@ -97,6 +103,7 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
             'tags': ', '.join(book['tags']) if book['tags'] else '',
             'cover_url': book['cover_url']
         })
+    activity_logger.info(f"Wrote book to CSV: {book['title']} by {book['author']}")
 
 def auto_update():
     import subprocess
@@ -133,6 +140,8 @@ def main():
 
     auto_update()
 
+    activity_logger.info(f"Scanning r/{SUBREDDIT_NAME} for book mentions...")
+
     reddit = praw.Reddit(
         client_id=REDDIT_CLIENT_ID,
         client_secret=REDDIT_SECRET,
@@ -158,11 +167,13 @@ def main():
 
             book = lookup_open_library(title, author)
             if book:
+                activity_logger.info(f"Found book mention: {book['title']} by {book['author']}")
                 write_book_to_csv(book)
                 display_book(book)
             else:
                 console.print(f"[yellow]No data found for: {title} by {author}[/]")
 
+    activity_logger.info(f"✅ Book scan complete.")
     console.print(f"[cyan]✅ Book scan complete.[/]")
 
 if __name__ == "__main__":

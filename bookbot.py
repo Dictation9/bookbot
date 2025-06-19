@@ -2,18 +2,26 @@ import re
 import configparser
 import requests
 import praw
+import logging
 from rich.console import Console
 from rich.table import Table
 
+# Set up error logging
+logging.basicConfig(filename="error.log", level=logging.ERROR,
+                    format="%(asctime)s [%(levelname)s] %(message)s")
+
 # Load config
 config = configparser.ConfigParser()
+if not os.path.exists("config.ini"):
+    print("❌ config.ini is missing. Please create it from config.example.ini.")
+    exit(1)
 config.read("config.ini")
 
 REDDIT_CLIENT_ID = config["reddit"]["client_id"]
 REDDIT_SECRET = config["reddit"]["client_secret"]
 REDDIT_USER_AGENT = config["reddit"]["user_agent"]
+SUBREDDIT_NAME = config["reddit"].get("subreddit", "lgbtbooks")
 
-SUBREDDIT_NAME = "lgbtbooks"
 POST_LIMIT = 10  # Set to None to fetch all posts
 
 console = Console()
@@ -51,7 +59,21 @@ def display_book(book):
     console.print(table)
     console.print("-" * 60)
 
+
+def auto_update():
+    import subprocess
+    import os
+    repo_dir = os.path.expanduser("~/bookbot")
+    if os.path.exists(repo_dir):
+        try:
+            subprocess.run(["git", "-C", repo_dir, "pull"], check=True)
+            print("🔄 Auto-update complete.")
+        except subprocess.CalledProcessError:
+            print("⚠️ Auto-update failed. Please pull manually.")
+
 def main():
+    auto_update()
+
     reddit = praw.Reddit(
         client_id=REDDIT_CLIENT_ID,
         client_secret=REDDIT_SECRET,
@@ -84,4 +106,8 @@ def main():
     console.print(f"[cyan]✅ Book scan complete.[/]")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        logging.exception("Bot crashed:")
+        print("❌ An error occurred. Check error.log for details.")

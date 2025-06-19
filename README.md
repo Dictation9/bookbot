@@ -15,8 +15,6 @@ Then edit `config.ini` to add your Reddit and email credentials.
 - `bookbot.py` – Main Reddit bot
 - `send_csv_email.py` – Sends daily CSV email
 - `storage_alert.py` – Disk usage alerts
-- `cron_setup.sh` – Adds scheduled tasks
-- `install.sh` – Full installer
-
----
-[GitHub Repo](https://github.com/Dictation9/bookbot)
+- `cron_setup.sh` – Sets up daily/weekly tasks
+- `install.sh` – Full install script
+- `bookbot.desktop` – Desktop shortcut for Raspberry Pi

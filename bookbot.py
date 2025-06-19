@@ -173,6 +173,26 @@ def main():
             else:
                 console.print(f"[yellow]No data found for: {title} by {author}[/]")
 
+        # Scan all comments for book mentions
+        try:
+            post.comments.replace_more(limit=None)
+            for comment in post.comments.list():
+                comment_mentions = extract_books(comment.body)
+                for title, author in comment_mentions:
+                    key = (title.lower(), author.lower())
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    book = lookup_open_library(title, author)
+                    if book:
+                        activity_logger.info(f"Found book mention in comment: {book['title']} by {book['author']}")
+                        write_book_to_csv(book)
+                        display_book(book)
+                    else:
+                        console.print(f"[yellow]No data found for: {title} by {author}[/]")
+        except Exception as e:
+            activity_logger.error(f"Error scanning comments for post {post.id}: {e}")
+
     activity_logger.info(f"✅ Book scan complete.")
     console.print(f"[cyan]✅ Book scan complete.[/]")
 

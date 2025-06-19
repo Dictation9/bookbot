@@ -9,6 +9,7 @@ from rich.table import Table
 import csv
 import time
 import prawcore
+from bs4 import BeautifulSoup
 
 # Set up error logging
 logging.basicConfig(filename="error.log", level=logging.ERROR,
@@ -87,6 +88,29 @@ def robust_lookup_open_library(title, author, retries=3, delay=2):
                 activity_logger.error(f"Open Library lookup failed for {title} by {author}: {e}")
                 return None
 
+def lookup_romance_io(title, author):
+    search_query = f"{title} {author}".replace(" ", "+")
+    url = f"https://www.romance.io/books?search={search_query}"
+    try:
+        response = requests.get(url, timeout=10)
+        if not response.ok:
+            return None
+        soup = BeautifulSoup(response.text, "html.parser")
+        book_link = soup.find("a", class_="book-link")
+        if book_link:
+            book_url = "https://www.romance.io" + book_link.get("href")
+            return {
+                "title": title,
+                "author": author,
+                "isbn13": "N/A",
+                "tags": [],
+                "cover_url": "N/A",
+                "romance_io_url": book_url
+            }
+    except Exception as e:
+        activity_logger.error(f"Romance.io lookup failed for {title} by {author}: {e}")
+    return None
+
 def write_book_to_csv(book, csv_path="book_mentions.csv"):
     existing = set()
     try:
@@ -101,17 +125,18 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
     if key in existing:
         return
     write_header = not os.path.exists(csv_path)
+    fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url', 'romance_io_url']
     with open(csv_path, 'a', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         if write_header:
             writer.writeheader()
         writer.writerow({
             'title': book['title'],
             'author': book['author'],
-            'isbn13': book['isbn13'],
-            'tags': ', '.join(book['tags']) if book['tags'] else '',
-            'cover_url': book['cover_url']
+            'isbn13': book.get('isbn13', 'N/A'),
+            'tags': ', '.join(book.get('tags', [])) if book.get('tags') else '',
+            'cover_url': book.get('cover_url', 'N/A'),
+            'romance_io_url': book.get('romance_io_url', '')
         })
         csvfile.flush()
     activity_logger.info(f"Wrote book to CSV: {book['title']} by {book['author']}")
@@ -162,7 +187,24 @@ def process_comments(post, seen):
                     write_book_to_csv(book)
                     display_book(book)
                 else:
-                    console.print(f"[yellow]No data found for: {title} by {author}[/]")
+                    # Try romance.io fallback
+                    romance_book = lookup_romance_io(title, author)
+                    if romance_book:
+                        activity_logger.info(f"Found book mention on romance.io: {romance_book['title']} by {romance_book['author']}")
+                        write_book_to_csv(romance_book)
+                        console.print(f"[yellow]No data found on Open Library, but found on romance.io: {title} by {author}[/]")
+                    else:
+                        no_data_book = {
+                            'title': title,
+                            'author': author,
+                            'isbn13': 'N/A',
+                            'tags': [],
+                            'cover_url': 'N/A',
+                            'romance_io_url': ''
+                        }
+                        activity_logger.info(f"No data found for: {title} by {author}, adding to CSV anyway.")
+                        write_book_to_csv(no_data_book)
+                        console.print(f"[yellow]No data found for: {title} by {author}[/]")
     except prawcore.exceptions.RateLimitExceeded as e:
         activity_logger.error(f"Rate limit exceeded while processing comments: {e}")
         time.sleep(e.sleep_time + 1)
@@ -197,7 +239,24 @@ def main():
                 write_book_to_csv(book)
                 display_book(book)
             else:
-                console.print(f"[yellow]No data found for: {title} by {author}[/]")
+                # Try romance.io fallback
+                romance_book = lookup_romance_io(title, author)
+                if romance_book:
+                    activity_logger.info(f"Found book mention on romance.io: {romance_book['title']} by {romance_book['author']}")
+                    write_book_to_csv(romance_book)
+                    console.print(f"[yellow]No data found on Open Library, but found on romance.io: {title} by {author}[/]")
+                else:
+                    no_data_book = {
+                        'title': title,
+                        'author': author,
+                        'isbn13': 'N/A',
+                        'tags': [],
+                        'cover_url': 'N/A',
+                        'romance_io_url': ''
+                    }
+                    activity_logger.info(f"No data found for: {title} by {author}, adding to CSV anyway.")
+                    write_book_to_csv(no_data_book)
+                    console.print(f"[yellow]No data found for: {title} by {author}[/]")
         process_comments(post, seen)
     activity_logger.info(f"✅ Book scan complete.")
     console.print(f"[cyan]✅ Book scan complete.[/]")

@@ -28,6 +28,12 @@ POST_LIMIT = 10  # Set to None to fetch all posts
 
 console = Console()
 
+EMAIL_FROM = config["email"]["from"]
+EMAIL_TO = config["email"]["to"]
+EMAIL_PASSWORD = config["email"]["password"]
+SMTP_SERVER = config["email"]["smtp_server"]
+SMTP_PORT = int(config["email"]["smtp_port"])
+
 def extract_books(text):
     pattern = r"\[(.*?)\s+by\s+(.*?)\]"
     return [(t.strip(), a.strip()) for t, a in re.findall(pattern, text, re.IGNORECASE)]

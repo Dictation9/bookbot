@@ -3,7 +3,6 @@ import configparser
 import requests
 import praw
 import logging
-import os
 from rich.console import Console
 from rich.table import Table
 
@@ -72,7 +71,28 @@ def auto_update():
         except subprocess.CalledProcessError:
             print("⚠️ Auto-update failed. Please pull manually.")
 
+
+def send_test_email():
+    import smtplib
+    from email.mime.text import MIMEText
+
+    msg = MIMEText("✅ Book Bot started successfully on your Raspberry Pi.")
+    msg["Subject"] = "Book Bot Started"
+    msg["From"] = EMAIL_FROM
+    msg["To"] = EMAIL_TO
+
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_FROM, EMAIL_PASSWORD)
+            server.send_message(msg)
+        print("📧 Test email sent.")
+    except Exception as e:
+        print(f"❌ Failed to send test email: {e}")
+
 def main():
+    send_test_email()
+
     auto_update()
 
     reddit = praw.Reddit(

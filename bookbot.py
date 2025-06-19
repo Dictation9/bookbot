@@ -45,6 +45,8 @@ EMAIL_PASSWORD = config["email"]["password"]
 SMTP_SERVER = config["email"]["smtp_server"]
 SMTP_PORT = int(config["email"]["smtp_port"])
 
+SEND_CSV_EMAIL = config["email"].get("send_csv_email", "true").strip().lower() == "true"
+
 def extract_books(text):
     # Matches {Book Title by Author} with curly braces
     pattern = r"\{([^\{\}]+?)\s+by\s+([^\{\}]+?)\}"
@@ -251,6 +253,32 @@ def process_comments(post, seen):
     except Exception as e:
         activity_logger.error(f"Error scanning comments for post {post.id}: {e}")
 
+def send_csv_report():
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.application import MIMEApplication
+    import os
+    msg = MIMEMultipart()
+    msg["From"] = EMAIL_FROM
+    msg["To"] = EMAIL_TO
+    msg["Subject"] = "📚 Book Bot - CSV Report"
+    msg.attach(MIMEText("Attached is your CSV export.", "plain"))
+    csv_path = "book_mentions.csv"
+    if os.path.exists(csv_path):
+        with open(csv_path, "rb") as f:
+            part = MIMEApplication(f.read(), Name="book_mentions.csv")
+            part["Content-Disposition"] = 'attachment; filename="book_mentions.csv"'
+            msg.attach(part)
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_FROM, EMAIL_PASSWORD)
+            server.send_message(msg)
+        print("📧 CSV email sent.")
+    except Exception as e:
+        print(f"❌ Failed to send CSV email: {e}")
+
 def main():
     send_test_email()
     auto_update()
@@ -278,14 +306,12 @@ def main():
                 write_book_to_csv(book)
                 display_book(book)
             else:
-                # Try romance.io fallback
                 romance_book = lookup_romance_io(title, author)
                 if romance_book:
                     activity_logger.info(f"Found book mention on romance.io: {romance_book['title']} by {romance_book['author']}")
                     write_book_to_csv(romance_book)
                     console.print(f"[yellow]No data found on Open Library, but found on romance.io: {title} by {author}[/]")
                 else:
-                    # Try Google Books fallback
                     google_book = lookup_google_books(title, author)
                     if google_book:
                         activity_logger.info(f"Found book mention on Google Books: {google_book['title']} by {google_book['author']}")
@@ -307,6 +333,8 @@ def main():
         process_comments(post, seen)
     activity_logger.info(f"✅ Book scan complete.")
     console.print(f"[cyan]✅ Book scan complete.[/]")
+    if SEND_CSV_EMAIL:
+        send_csv_report()
 
 def livestream_subreddit():
     reddit = praw.Reddit(

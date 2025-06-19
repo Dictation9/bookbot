@@ -3,7 +3,6 @@ import configparser
 import requests
 import praw
 import logging
-import os
 from rich.console import Console
 from rich.table import Table
 
@@ -12,11 +11,19 @@ logging.basicConfig(filename="error.log", level=logging.ERROR,
                     format="%(asctime)s [%(levelname)s] %(message)s")
 
 # Load config
+import os
 config = configparser.ConfigParser()
+
 if not os.path.exists("config.ini"):
     print("❌ config.ini is missing. Please create it from config.example.ini.")
     exit(1)
 config.read("config.ini")
+
+EMAIL_FROM = config["email"]["from"]
+EMAIL_TO = config["email"]["to"]
+EMAIL_PASSWORD = config["email"]["password"]
+SMTP_SERVER = config["email"]["smtp_server"]
+SMTP_PORT = int(config["email"]["smtp_port"])
 
 REDDIT_CLIENT_ID = config["reddit"]["client_id"]
 REDDIT_SECRET = config["reddit"]["client_secret"]
@@ -51,6 +58,7 @@ def lookup_open_library(title, author):
     }
 
 def display_book(book):
+                logging.info(f"Found book mention: {book['title']} by {book['author']}"):
     table = Table(title=f"[bold magenta]{book['title']}[/] by {book['author']}")
     table.add_column("Field", style="cyan", no_wrap=True)
     table.add_column("Value", style="white")
@@ -106,26 +114,32 @@ def main():
     seen = set()
 
     console.print(f"[green]Scanning r/{SUBREDDIT_NAME} for book mentions...[/]\n")
+    logging.info("📦 Book Bot started scanning.")
 
     posts = subreddit.new(limit=POST_LIMIT) if POST_LIMIT else subreddit.new(limit=None)
 
     for post in posts:
+        logging.info(f"Scanning post: {post.title}")
         content = f"{post.title} {post.selftext}"
         mentions = extract_books(content)
 
         for title, author in mentions:
             key = (title.lower(), author.lower())
             if key in seen:
+                logging.info(f"Skipped duplicate: {title} by {author}")
                 continue
             seen.add(key)
 
             book = lookup_open_library(title, author)
             if book:
                 display_book(book)
+                logging.info(f"Found book mention: {book['title']} by {book['author']}")
             else:
                 console.print(f"[yellow]No data found for: {title} by {author}[/]")
+                logging.info(f"No data found for: {title} by {author}")
 
     console.print(f"[cyan]✅ Book scan complete.[/]")
+    logging.info("✅ Book scan complete.")
 
 if __name__ == "__main__":
     try:

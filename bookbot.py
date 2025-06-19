@@ -112,6 +112,33 @@ def lookup_romance_io(title, author):
         activity_logger.error(f"Romance.io lookup failed for {title} by {author}: {e}")
     return None
 
+def lookup_google_books(title, author):
+    import requests
+    params = {
+        'q': f'intitle:{title} inauthor:{author}',
+        'maxResults': 1
+    }
+    url = 'https://www.googleapis.com/books/v1/volumes'
+    try:
+        r = requests.get(url, params=params, timeout=10)
+        if r.ok:
+            items = r.json().get('items', [])
+            if items:
+                volume = items[0]['volumeInfo']
+                isbn13 = next((id['identifier'] for id in volume.get('industryIdentifiers', []) if id['type'] == 'ISBN_13'), 'N/A')
+                return {
+                    'title': volume.get('title', title),
+                    'author': ', '.join(volume.get('authors', [author])),
+                    'isbn13': isbn13,
+                    'tags': volume.get('categories', []),
+                    'cover_url': volume.get('imageLinks', {}).get('thumbnail', 'N/A'),
+                    'romance_io_url': '',
+                    'google_books_url': volume.get('infoLink', '')
+                }
+    except Exception as e:
+        activity_logger.error(f"Google Books lookup failed for {title} by {author}: {e}")
+    return None
+
 def write_book_to_csv(book, csv_path="book_mentions.csv"):
     existing = set()
     try:
@@ -126,7 +153,7 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
     if key in existing:
         return
     write_header = not os.path.exists(csv_path)
-    fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url', 'romance_io_url', 'datetime_added']
+    fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url', 'romance_io_url', 'google_books_url', 'datetime_added']
     with open(csv_path, 'a', newline='', encoding='utf-8') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         if write_header:
@@ -138,6 +165,7 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
             'tags': ', '.join(book.get('tags', [])) if book.get('tags') else '',
             'cover_url': book.get('cover_url', 'N/A'),
             'romance_io_url': book.get('romance_io_url', ''),
+            'google_books_url': book.get('google_books_url', ''),
             'datetime_added': datetime.datetime.now().isoformat()
         })
         csvfile.flush()
@@ -196,17 +224,25 @@ def process_comments(post, seen):
                         write_book_to_csv(romance_book)
                         console.print(f"[yellow]No data found on Open Library, but found on romance.io: {title} by {author}[/]")
                     else:
-                        no_data_book = {
-                            'title': title,
-                            'author': author,
-                            'isbn13': 'N/A',
-                            'tags': [],
-                            'cover_url': 'N/A',
-                            'romance_io_url': ''
-                        }
-                        activity_logger.info(f"No data found for: {title} by {author}, adding to CSV anyway.")
-                        write_book_to_csv(no_data_book)
-                        console.print(f"[yellow]No data found for: {title} by {author}[/]")
+                        # Try Google Books fallback
+                        google_book = lookup_google_books(title, author)
+                        if google_book:
+                            activity_logger.info(f"Found book mention on Google Books: {google_book['title']} by {google_book['author']}")
+                            write_book_to_csv(google_book)
+                            console.print(f"[yellow]No data found on Open Library or romance.io, but found on Google Books: {title} by {author}[/]")
+                        else:
+                            no_data_book = {
+                                'title': title,
+                                'author': author,
+                                'isbn13': 'N/A',
+                                'tags': [],
+                                'cover_url': 'N/A',
+                                'romance_io_url': '',
+                                'google_books_url': ''
+                            }
+                            activity_logger.info(f"No data found for: {title} by {author}, adding to CSV anyway.")
+                            write_book_to_csv(no_data_book)
+                            console.print(f"[yellow]No data found for: {title} by {author}[/]")
     except prawcore.exceptions.RateLimitExceeded as e:
         activity_logger.error(f"Rate limit exceeded while processing comments: {e}")
         time.sleep(e.sleep_time + 1)
@@ -248,17 +284,25 @@ def main():
                     write_book_to_csv(romance_book)
                     console.print(f"[yellow]No data found on Open Library, but found on romance.io: {title} by {author}[/]")
                 else:
-                    no_data_book = {
-                        'title': title,
-                        'author': author,
-                        'isbn13': 'N/A',
-                        'tags': [],
-                        'cover_url': 'N/A',
-                        'romance_io_url': ''
-                    }
-                    activity_logger.info(f"No data found for: {title} by {author}, adding to CSV anyway.")
-                    write_book_to_csv(no_data_book)
-                    console.print(f"[yellow]No data found for: {title} by {author}[/]")
+                    # Try Google Books fallback
+                    google_book = lookup_google_books(title, author)
+                    if google_book:
+                        activity_logger.info(f"Found book mention on Google Books: {google_book['title']} by {google_book['author']}")
+                        write_book_to_csv(google_book)
+                        console.print(f"[yellow]No data found on Open Library or romance.io, but found on Google Books: {title} by {author}[/]")
+                    else:
+                        no_data_book = {
+                            'title': title,
+                            'author': author,
+                            'isbn13': 'N/A',
+                            'tags': [],
+                            'cover_url': 'N/A',
+                            'romance_io_url': '',
+                            'google_books_url': ''
+                        }
+                        activity_logger.info(f"No data found for: {title} by {author}, adding to CSV anyway.")
+                        write_book_to_csv(no_data_book)
+                        console.print(f"[yellow]No data found for: {title} by {author}[/]")
         process_comments(post, seen)
     activity_logger.info(f"✅ Book scan complete.")
     console.print(f"[cyan]✅ Book scan complete.[/]")

@@ -38,6 +38,7 @@ def enrich_with_openlibrary(title, author, retries=3, delay=2):
             }
         except Exception as e:
             if attempt < retries - 1:
+                print(f"[INFO] Open Library API error, cooling down for {delay} seconds before retrying...")
                 time.sleep(delay)
             else:
                 activity_logger.error(f"Open Library lookup failed for {title} by {author}: {e}")

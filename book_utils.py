@@ -9,21 +9,6 @@ def extract_books(text):
     pattern = r"\{([^\{\}]+?)\s+by\s+([^\{\}]+?)\}"
     return [(t.strip(), a.strip()) for t, a in re.findall(pattern, text, re.IGNORECASE)]
 
-def extract_books_from_romance_bot(text):
-    """
-    Extracts 'Title by Author' from the first line of a romance-bot comment.
-    Returns a list of (title, author) tuples.
-    """
-    lines = text.strip().splitlines()
-    if not lines:
-        return []
-    first_line = lines[0].strip()
-    match = re.match(r"(.+?)\s+by\s+(.+)", first_line, re.IGNORECASE)
-    if match:
-        title, author = match.group(1).strip(), match.group(2).strip()
-        return [(title, author)]
-    return []
-
 def extract_romance_bot_data(text):
     # Extract romance.io link
     link_match = re.search(r'(https?://www\.romance\.io/[\w\-/\?=&#.]+)', text)

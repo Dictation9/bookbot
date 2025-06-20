@@ -313,6 +313,7 @@ def process_comments(post, seen):
     except praw.exceptions.APIException as e:
         if hasattr(e, 'error_type') and 'RATELIMIT' in str(e.error_type).upper():
             activity_logger.error(f"Rate limit exceeded while processing comments: {e}")
+            print("[INFO] Reddit API rate limit hit. Cooling down for 60 seconds before retrying...")
             time.sleep(60)  # Wait a minute before retrying
             process_comments(post, seen)
         else:

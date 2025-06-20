@@ -19,6 +19,7 @@ def run_csv_double_check(mode='missing', csv_path='book_mentions.csv', praw_redd
     mode: 'missing' (only incomplete entries) or 'all' (every entry)
     praw_reddit: a praw.Reddit instance
     """
+    print(f"[INFO] Running CSV double-check (mode: {mode})...")
     if praw_reddit is None:
         raise ValueError("praw_reddit instance required")
     try:

@@ -1,9 +1,11 @@
 import re
 import datetime
 import logging
+import os
 from book_utils import extract_books, update_csv_with_romance_bot, write_book_to_csv, activity_logger
 
 # Set up a dedicated logger for comment data
+os.makedirs("logs", exist_ok=True)
 comment_data_logger = logging.getLogger("comment_data")
 comment_data_logger.setLevel(logging.INFO)
 comment_data_handler = logging.FileHandler("logs/comment_data.log")

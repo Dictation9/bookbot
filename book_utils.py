@@ -4,6 +4,8 @@ import os
 import datetime
 import logging
 
+os.makedirs("logs", exist_ok=True)
+
 def extract_books(text):
     # Matches {Book Title by Author} with curly braces
     pattern = r"\{([^\{\}]+?)\s+by\s+([^\{\}]+?)\}"

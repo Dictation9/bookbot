@@ -2,12 +2,14 @@ import logging
 import csv
 import praw
 import datetime
+import os
 from book_utils import extract_books, update_csv_with_romance_bot, write_book_to_csv, activity_logger
 from handlers.web_search.openlibrary_handler import enrich_with_openlibrary
 from handlers.web_search.googlebooks_handler import enrich_with_googlebooks
 from handlers.web_search.romanceio_handler import enrich_with_romanceio
 
 # Set up a dedicated logger for comment data (shared with other handlers)
+os.makedirs("logs", exist_ok=True)
 comment_data_logger = logging.getLogger("comment_data")
 comment_data_logger.setLevel(logging.INFO)
 comment_data_handler = logging.FileHandler("logs/comment_data.log")

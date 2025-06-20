@@ -3,8 +3,10 @@ Template for a bot handler module. Copy and adapt for new bots.
 """
 
 import logging
+import os
 
 # Set up a dedicated logger for comment data (shared with other handlers)
+os.makedirs("logs", exist_ok=True)
 comment_data_logger = logging.getLogger("comment_data")
 comment_data_logger.setLevel(logging.INFO)
 comment_data_handler = logging.FileHandler("logs/comment_data.log")

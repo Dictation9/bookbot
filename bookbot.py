@@ -45,8 +45,8 @@ REDDIT_SECRET = config["reddit"]["client_secret"]
 REDDIT_USER_AGENT = config["reddit"]["user_agent"]
 SUBREDDIT_NAME = config["reddit"].get("subreddit", "lgbtbooks")
 
-limit_str = config["reddit"].get("limit", "10").strip()
-POST_LIMIT = None if limit_str.lower() == "none" else int(limit_str)
+limit_str = config["reddit"].get("limit", "").strip()
+POST_LIMIT = None if not limit_str or limit_str.lower() == "none" else int(limit_str)
 
 console = Console()
 

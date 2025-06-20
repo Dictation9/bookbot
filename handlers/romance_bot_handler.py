@@ -72,6 +72,7 @@ def extract_romance_bot_data(text):
     return romance_link, topics, steam, steam_rating
 
 def handle_romance_bot_comment(comment, seen):
+    subreddit_name = comment.subreddit.display_name
     reddit_created_utc = getattr(comment, 'created_utc', None)
     reddit_created_date = datetime.datetime.utcfromtimestamp(reddit_created_utc).isoformat() if reddit_created_utc else ''
     reddit_url = f"https://reddit.com{getattr(comment, 'permalink', '')}"
@@ -103,8 +104,8 @@ def handle_romance_bot_comment(comment, seen):
         if not romance_io_url: missing.append('romance_io_url')
         if not romance_bot_steam: missing.append('steam')
         if not romance_bot_topics: missing.append('tags')
-        comment_data_logger.info(f"Pulled: title='{title}', author='{author}', romance_io_url='{romance_io_url}', steam='{romance_bot_steam}', tags='{romance_bot_topics}', steam_rating='{romance_bot_steam_rating}', reddit_url='{reddit_url}'" + (f" | MISSING: {', '.join(missing)}" if missing else ""))
-        updated = update_csv_with_romance_bot(title, author, romance_io_url, romance_bot_topics, romance_bot_steam, romance_bot_steam_rating, reddit_url=reddit_url)
+        comment_data_logger.info(f"Pulled: title='{title}', author='{author}', romance_io_url='{romance_io_url}', steam='{romance_bot_steam}', tags='{romance_bot_topics}', steam_rating='{romance_bot_steam_rating}', reddit_url='{reddit_url}', subreddit='{subreddit_name}'" + (f" | MISSING: {', '.join(missing)}" if missing else ""))
+        updated = update_csv_with_romance_bot(title, author, romance_io_url, romance_bot_topics, romance_bot_steam, romance_bot_steam_rating, reddit_url=reddit_url, subreddit=subreddit_name)
         if not updated:
             # If not already in CSV, add as new
             romance_book = {
@@ -119,7 +120,8 @@ def handle_romance_bot_comment(comment, seen):
                 'steam_rating': romance_bot_steam_rating,
                 'reddit_created_utc': reddit_created_utc,
                 'reddit_created_date': reddit_created_date,
-                'reddit_url': reddit_url
+                'reddit_url': reddit_url,
+                'subreddit': subreddit_name
             }
             write_book_to_csv(romance_book)
             activity_logger.info(f"Added romance-bot book: {title} by {author}")

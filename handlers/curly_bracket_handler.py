@@ -17,90 +17,66 @@ comment_data_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s]
 if not comment_data_logger.hasHandlers():
     comment_data_logger.addHandler(comment_data_handler)
 
-def is_curly_bracket_comment(comment):
-    # This handler is the fallback for any comment
-    return True
+def is_curly_bracket_comment(item):
+    """Checks if a post or comment contains a curly bracket mention."""
+    content = ""
+    if hasattr(item, 'body'): # It's a comment
+        content = item.body
+    elif hasattr(item, 'selftext'): # It's a post
+        content = item.selftext
+    return extract_books(content)
 
-def handle_curly_bracket_comment(comment, seen):
-    comment_mentions = extract_books(comment.body)
-    reddit_created_utc = getattr(comment, 'created_utc', None)
+def handle_curly_bracket_comment(item, seen):
+    """Handles posts or comments with curly bracket mentions."""
+    content = ""
+    if hasattr(item, 'body'): # It's a comment
+        content = item.body
+    elif hasattr(item, 'selftext'): # It's a post
+        content = f"{item.title} {item.selftext}"
+
+    mentions = extract_books(content)
+    if not mentions:
+        return
+
+    subreddit_name = item.subreddit.display_name
+    reddit_created_utc = getattr(item, 'created_utc', None)
     reddit_created_date = datetime.datetime.utcfromtimestamp(reddit_created_utc).isoformat() if reddit_created_utc else ''
-    romance_link = extract_romance_io_link(comment.body)
-    reddit_url = f"https://reddit.com{getattr(comment, 'permalink', '')}"
-    # Log the full raw Reddit API data for the comment
+    romance_link = extract_romance_io_link(content)
+    reddit_url = f"https://reddit.com{getattr(item, 'permalink', '')}"
+    
+    # Log the raw data
     try:
-        comment_data_logger.info(f"[RAW COMMENT DATA] {getattr(comment, 'id', '')}: {getattr(comment, 'body', '')}")
-        comment_data_logger.info(f"[RAW COMMENT OBJECT] {getattr(comment, 'id', '')}: {vars(comment)}")
+        log_content = content.replace('\n', ' ').replace('\r', '')
+        comment_data_logger.info(f"[RAW DATA] ID: {getattr(item, 'id', '')} | Subreddit: {subreddit_name} | Content: {log_content}")
     except Exception as e:
-        comment_data_logger.warning(f"[RAW COMMENT DATA] Could not log full comment object: {e}")
-    for title, author in comment_mentions:
+        comment_data_logger.warning(f"[RAW DATA LOGGING FAILED] Could not log full object: {e}")
+
+    for title, author in mentions:
         key = (title.lower(), author.lower())
         if key in seen:
             continue
         seen.add(key)
-        # Log comment data and missing fields
-        missing = []
-        if not title: missing.append('title')
-        if not author: missing.append('author')
-        if not romance_link: missing.append('romance_io_url')
-        comment_data_logger.info(f"Pulled: title='{title}', author='{author}', romance_io_url='{romance_link}', reddit_url='{reddit_url}'" + (f" | MISSING: {', '.join(missing)}" if missing else ""))
-        book = enrich_with_openlibrary(title, author)
-        if book:
-            book['reddit_created_utc'] = reddit_created_utc
-            book['reddit_created_date'] = reddit_created_date
-            book['romance_io_url'] = romance_link  # Always include romance.io link if present
-            book['steam'] = ''
-            book['reddit_url'] = reddit_url
-            activity_logger.info(f"Found book mention in comment: {book['title']} by {book['author']}")
-            write_book_to_csv(book)
-            continue
+
+        book = {'title': title, 'author': author}
+        
+        # Enrich book data
+        enriched_book = enrich_with_openlibrary(title, author)
+        if not enriched_book:
+            enriched_book = enrich_with_romanceio(title, author)
+        if not enriched_book:
+            enriched_book = enrich_with_googlebooks(title, author)
+
+        if enriched_book:
+            book.update(enriched_book)
+        
+        # Always add standard reddit data
+        book['reddit_created_utc'] = reddit_created_utc
+        book['reddit_created_date'] = reddit_created_date
+        book['reddit_url'] = reddit_url
+        book['subreddit'] = subreddit_name
+        # Always overwrite with a direct romance.io link if one was in the comment
         if romance_link:
-            romance_book = {
-                'title': title,
-                'author': author,
-                'isbn13': 'N/A',
-                'tags': [],
-                'cover_url': 'N/A',
-                'romance_io_url': romance_link,
-                'google_books_url': '',
-                'steam': '',
-                'reddit_created_utc': reddit_created_utc,
-                'reddit_created_date': reddit_created_date,
-                'reddit_url': reddit_url
-            }
-            activity_logger.info(f"Found romance.io link in comment for: {title} by {author}")
-            write_book_to_csv(romance_book)
-            continue  # Skip further lookups for this mention
-        romance_book = enrich_with_romanceio(title, author)
-        if romance_book:
-            romance_book['reddit_created_utc'] = reddit_created_utc
-            romance_book['reddit_created_date'] = reddit_created_date
-            romance_book['steam'] = ''
-            romance_book['reddit_url'] = reddit_url
-            activity_logger.info(f"Found book mention in comment on romance.io: {romance_book['title']} by {romance_book['author']}")
-            write_book_to_csv(romance_book)
-        else:
-            google_book = enrich_with_googlebooks(title, author)
-            if google_book:
-                google_book['reddit_created_utc'] = reddit_created_utc
-                google_book['reddit_created_date'] = reddit_created_date
-                google_book['steam'] = ''
-                google_book['reddit_url'] = reddit_url
-                activity_logger.info(f"Found book mention in comment on Google Books: {google_book['title']} by {google_book['author']}")
-                write_book_to_csv(google_book)
-            else:
-                no_data_book = {
-                    'title': title,
-                    'author': author,
-                    'isbn13': 'N/A',
-                    'tags': [],
-                    'cover_url': 'N/A',
-                    'romance_io_url': '',
-                    'google_books_url': '',
-                    'steam': '',
-                    'reddit_created_utc': reddit_created_utc,
-                    'reddit_created_date': reddit_created_date,
-                    'reddit_url': reddit_url
-                }
-                activity_logger.info(f"No data found for: {title} by {author} in comment, adding to CSV anyway.")
-                write_book_to_csv(no_data_book) 
+            book['romance_io_url'] = romance_link
+        
+        activity_logger.info(f"Found mention for '{title}' by '{author}' in r/{subreddit_name}. Writing to CSV.")
+        write_book_to_csv(book) 

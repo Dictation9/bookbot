@@ -43,7 +43,9 @@ config.read("config.ini")
 REDDIT_CLIENT_ID = config["reddit"]["client_id"]
 REDDIT_SECRET = config["reddit"]["client_secret"]
 REDDIT_USER_AGENT = config["reddit"]["user_agent"]
-SUBREDDIT_NAME = config["reddit"].get("subreddit", "lgbtbooks")
+# Parse comma-separated subreddit list and join with "+" for PRAW
+SUBREDDIT_NAMES_LIST = [name.strip() for name in config["reddit"].get("subreddit", "lgbtbooks").split(',')]
+SUBREDDIT_NAME = "+".join(SUBREDDIT_NAMES_LIST)
 
 limit_str = config["reddit"].get("limit", "").strip()
 POST_LIMIT = None if not limit_str or limit_str.lower() == "none" else int(limit_str)
@@ -288,31 +290,25 @@ def update_csv_with_romance_bot(title, author, romance_io_url, topics, steam, cs
     return updated
 
 def process_comments(post, seen):
+    # Process comments with retry logic for API errors
     try:
+        # Replace MoreComments with a fresh fetch, which is more robust
         post.comments.replace_more(limit=None)
-        for comment in post.comments.list():
-            # Romance-bot handler
-            if is_romance_bot(comment):
-                handle_romance_bot_comment(comment, seen)
-                continue  # Don't process further for romance-bot
-            # Add more bot handlers here, e.g.:
-            # from fantasy_bot_handler import is_fantasy_bot, handle_fantasy_bot_comment
-            # if is_fantasy_bot(comment):
-            #     handle_fantasy_bot_comment(comment, seen)
-            #     continue
-            # Curly-bracket handler as fallback
-            if is_curly_bracket_comment(comment):
-                handle_curly_bracket_comment(comment, seen)
-    except praw.exceptions.APIException as e:
-        if hasattr(e, 'error_type') and 'RATELIMIT' in str(e.error_type).upper():
-            activity_logger.error(f"Rate limit exceeded while processing comments: {e}")
-            print("[INFO] Reddit API rate limit hit. Cooling down for 60 seconds before retrying...")
-            time.sleep(60)  # Wait a minute before retrying
-            process_comments(post, seen)
-        else:
-            activity_logger.error(f"APIException while processing comments: {e}")
-    except Exception as e:
-        activity_logger.error(f"Error scanning comments for post {post.id}: {e}")
+        comments = post.comments.list()
+    except (prawcore.exceptions.RequestException, prawcore.exceptions.ServerError) as e:
+        activity_logger.warning(f"Could not fetch comments for post {post.id} due to API error: {e}. Skipping post.")
+        console.print(f"⚠️ Could not fetch comments for post {post.id}. Skipping.")
+        return
+
+    for comment in comments:
+        # Each handler will now be responsible for calling write_book_to_csv with the correct data
+        if is_romance_bot(comment):
+            handle_romance_bot_comment(comment, seen)
+            continue # Move to the next comment
+            
+        if is_curly_bracket_comment(comment):
+            handle_curly_bracket_comment(comment, seen)
+            continue
 
 def send_csv_report():
     import smtplib
@@ -376,75 +372,99 @@ def get_next_run_time(check_times):
     return tomorrow.replace(hour=first_run_tomorrow.hour, minute=first_run_tomorrow.minute, second=0, microsecond=0)
 
 def run_scan_and_enrich(reddit):
-    # This function contains the main scanning logic
-    subreddit = reddit.subreddit(SUBREDDIT_NAME)
     seen = set()
-    console.print(f"[green]Scanning r/{SUBREDDIT_NAME} for book mentions...[/]\n")
-    activity_logger.info(f"Scanning r/{SUBREDDIT_NAME} for book mentions...\n")
-
-    posts = subreddit.new(limit=POST_LIMIT) if POST_LIMIT else subreddit.new(limit=None)
-    for post in posts:
-        content = f"{post.title} {post.selftext}"
-        mentions = extract_books(content)
-        reddit_created_utc = getattr(post, 'created_utc', None)
-        reddit_created_date = datetime.datetime.utcfromtimestamp(reddit_created_utc).isoformat() if reddit_created_utc else ''
-        romance_link = extract_romance_io_link(content)
-        reddit_url = f"https://reddit.com{getattr(post, 'permalink', '')}"
-        for title, author in mentions:
-            key = (title.lower(), author.lower())
-            if key in seen:
-                continue
-            seen.add(key)
-            book = robust_lookup_open_library(title, author)
-            if book:
-                book['reddit_created_utc'] = reddit_created_utc
-                book['reddit_created_date'] = reddit_created_date
-                book['romance_io_url'] = romance_link
-                book['reddit_url'] = reddit_url
-                activity_logger.info(f"Found book mention: {book['title']} by {book['author']}")
-                write_book_to_csv(book)
-                display_book(book)
-                continue
-            romance_book = lookup_romance_io(title, author)
-            if romance_book:
-                romance_book['reddit_created_utc'] = reddit_created_utc
-                romance_book['reddit_created_date'] = reddit_created_date
-                romance_book['reddit_url'] = reddit_url
-                activity_logger.info(f"Found book mention on romance.io: {romance_book['title']} by {romance_book['author']}")
-                write_book_to_csv(romance_book)
-                console.print(f"[yellow]No data found on Open Library, but found on romance.io: {title} by {author}[/]")
-                activity_logger.info(f"No data found on Open Library, but found on romance.io: {title} by {author}")
-            else:
-                google_book = lookup_google_books(title, author)
-                if google_book:
-                    google_book['reddit_created_utc'] = reddit_created_utc
-                    google_book['reddit_created_date'] = reddit_created_date
-                    google_book['reddit_url'] = reddit_url
-                    activity_logger.info(f"Found book mention on Google Books: {google_book['title']} by {google_book['author']}")
-                    write_book_to_csv(google_book)
-                    console.print(f"[yellow]No data found on Open Library or romance.io, but found on Google Books: {title} by {author}[/]")
-                    activity_logger.info(f"No data found on Open Library or romance.io, but found on Google Books: {title} by {author}")
-                else:
-                    no_data_book = {
-                        'title': title, 'author': author, 'isbn13': 'N/A', 'tags': [], 'cover_url': 'N/A',
-                        'romance_io_url': '', 'google_books_url': '', 'steam': '',
-                        'reddit_created_utc': reddit_created_utc, 'reddit_created_date': reddit_created_date, 'reddit_url': reddit_url
-                    }
-                    activity_logger.info(f"No data found for: {title} by {author}, adding to CSV anyway.")
-                    write_book_to_csv(no_data_book)
-                    console.print(f"[yellow]No data found for: {title} by {author}[/]")
-                    activity_logger.info(f"No data found for: {title} by {author}")
-
-        process_comments(post, seen)
+    csv_path = "book_mentions.csv"
+    if os.path.exists(csv_path):
+        try:
+            with open(csv_path, newline='', encoding='utf-8') as csvfile:
+                reader = csv.reader(csvfile)
+                # Skip header
+                next(reader, None)
+                for row in reader:
+                    if row: 
+                        title, author = row[0].strip().lower(), row[1].strip().lower()
+                        seen.add((title, author))
+        except (FileNotFoundError, StopIteration):
+            pass # File is empty or doesn't exist
     
-    activity_logger.info(f"✅ Book scan complete.")
-    console.print(f"[cyan]✅ Book scan complete.[/]")
-    activity_logger.info("✅ Book scan complete.")
+    console.print(f"🔎 Scanning subreddit(s): [bold cyan]{SUBREDDIT_NAME}[/bold cyan]...")
+    activity_logger.info(f"Scanning subreddit(s): {SUBREDDIT_NAME}...")
 
-    # Double-check CSV if enabled on run
-    if DOUBLE_CHECK_ON_RUN:
-        activity_logger.info(f"Running CSV double-check in mode: {DOUBLE_CHECK_MODE}")
-        run_csv_double_check(mode=DOUBLE_CHECK_MODE, praw_reddit=reddit)
+    subreddit = reddit.subreddit(SUBREDDIT_NAME)
+    
+    try:
+        if POST_LIMIT:
+            posts = subreddit.new(limit=POST_LIMIT)
+        else:
+            posts = subreddit.new(limit=None)
+        for post in posts:
+            # Pass the post object to process_comments
+            process_comments(post, seen)
+            
+            # Also process the post body itself using the curly bracket handler
+            handle_curly_bracket_comment(post, seen)
+
+            content = f"{post.title} {post.selftext}"
+            mentions = extract_books(content)
+            reddit_created_utc = getattr(post, 'created_utc', None)
+            reddit_created_date = datetime.datetime.utcfromtimestamp(reddit_created_utc).isoformat() if reddit_created_utc else ''
+            romance_link = extract_romance_io_link(content)
+            reddit_url = f"https://reddit.com{getattr(post, 'permalink', '')}"
+            for title, author in mentions:
+                key = (title, author)
+                if key in seen:
+                    continue
+                seen.add(key)
+                book = robust_lookup_open_library(title, author)
+                if book:
+                    book['reddit_created_utc'] = reddit_created_utc
+                    book['reddit_created_date'] = reddit_created_date
+                    book['romance_io_url'] = romance_link
+                    book['reddit_url'] = reddit_url
+                    activity_logger.info(f"Found book mention: {book['title']} by {book['author']}")
+                    write_book_to_csv(book)
+                    display_book(book)
+                    continue
+                romance_book = lookup_romance_io(title, author)
+                if romance_book:
+                    romance_book['reddit_created_utc'] = reddit_created_utc
+                    romance_book['reddit_created_date'] = reddit_created_date
+                    romance_book['reddit_url'] = reddit_url
+                    activity_logger.info(f"Found book mention on romance.io: {romance_book['title']} by {romance_book['author']}")
+                    write_book_to_csv(romance_book)
+                    console.print(f"[yellow]No data found on Open Library, but found on romance.io: {title} by {author}[/]")
+                    activity_logger.info(f"No data found on Open Library, but found on romance.io: {title} by {author}")
+                else:
+                    google_book = lookup_google_books(title, author)
+                    if google_book:
+                        google_book['reddit_created_utc'] = reddit_created_utc
+                        google_book['reddit_created_date'] = reddit_created_date
+                        google_book['reddit_url'] = reddit_url
+                        activity_logger.info(f"Found book mention on Google Books: {google_book['title']} by {google_book['author']}")
+                        write_book_to_csv(google_book)
+                        console.print(f"[yellow]No data found on Open Library or romance.io, but found on Google Books: {title} by {author}[/]")
+                        activity_logger.info(f"No data found on Open Library or romance.io, but found on Google Books: {title} by {author}")
+                    else:
+                        no_data_book = {
+                            'title': title, 'author': author, 'isbn13': 'N/A', 'tags': [], 'cover_url': 'N/A',
+                            'romance_io_url': '', 'google_books_url': '', 'steam': '',
+                            'reddit_created_utc': reddit_created_utc, 'reddit_created_date': reddit_created_date, 'reddit_url': reddit_url
+                        }
+                        activity_logger.info(f"No data found for: {title} by {author}, adding to CSV anyway.")
+                        write_book_to_csv(no_data_book)
+                        console.print(f"[yellow]No data found for: {title} by {author}[/]")
+                        activity_logger.info(f"No data found for: {title} by {author}")
+
+        activity_logger.info(f"✅ Book scan complete.")
+        console.print(f"[cyan]✅ Book scan complete.[/]")
+        activity_logger.info("✅ Book scan complete.")
+
+        # Double-check CSV if enabled on run
+        if DOUBLE_CHECK_ON_RUN:
+            activity_logger.info(f"Running CSV double-check in mode: {DOUBLE_CHECK_MODE}")
+            run_csv_double_check(mode=DOUBLE_CHECK_MODE, praw_reddit=reddit)
+    except Exception as e:
+        activity_logger.error(f"Error running scan and enrich: {e}")
 
 def main():
     send_test_email()

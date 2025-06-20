@@ -48,6 +48,8 @@ SMTP_PORT = int(config["email"]["smtp_port"])
 
 SEND_CSV_EMAIL = config["email"].get("send_csv_email", "true").strip().lower() == "true"
 
+DELETE_CSV_ON_START = config.has_option('general', 'delete_csv_on_start') and config['general'].get('delete_csv_on_start', 'false').strip().lower() == 'true'
+
 def extract_books(text):
     # Matches {Book Title by Author} with curly braces
     pattern = r"\{([^\{\}]+?)\s+by\s+([^\{\}]+?)\}"
@@ -403,6 +405,13 @@ def send_csv_report():
 def main():
     send_test_email()
     auto_update()
+    if DELETE_CSV_ON_START:
+        csv_path = "book_mentions.csv"
+        if os.path.exists(csv_path):
+            os.remove(csv_path)
+            activity_logger.info("Deleted book_mentions.csv at start of run due to config setting.")
+        else:
+            activity_logger.info("CSV deletion requested but book_mentions.csv does not exist.")
     activity_logger.info(f"Scanning r/{SUBREDDIT_NAME} for book mentions...")
     reddit = praw.Reddit(
         client_id=REDDIT_CLIENT_ID,

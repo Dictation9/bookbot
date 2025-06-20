@@ -1,4 +1,6 @@
 praw
 requests
 rich
+beautifulsoup4
 setproctitle
+customtkinter

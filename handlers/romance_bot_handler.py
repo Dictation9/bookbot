@@ -16,10 +16,10 @@ if not comment_data_logger.hasHandlers():
     comment_data_logger.addHandler(comment_data_handler)
 
 STEAM_LABEL_TO_NUM = {
-    "None": 1,
-    "Mild": 2,
-    "Moderate": 3,
-    "Explicit": 4,
+    "Glimpses and kisses": 1,
+    "Behind closed doors": 2,
+    "Open door": 3,
+    "Explicit open door": 4,
     "Explicit and plentiful": 5,
     # Add common variants/typos as needed
 }
@@ -68,7 +68,7 @@ def extract_romance_bot_data(text):
         if steam_plain:
             steam = steam_plain.group(1).strip()
     # Map to numeric rating
-    steam_rating = STEAM_LABEL_TO_NUM.get(steam, '')
+    steam_rating = str(STEAM_LABEL_TO_NUM.get(steam, '')) if steam else ''
     return romance_link, topics, steam, steam_rating
 
 def handle_romance_bot_comment(comment, seen):

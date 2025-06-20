@@ -1,7 +1,10 @@
 import csv
 import praw
 import datetime
-from book_utils import extract_books, extract_books_from_romance_bot, extract_romance_bot_data, update_csv_with_romance_bot, write_book_to_csv, activity_logger, robust_lookup_open_library, lookup_romance_io, lookup_google_books
+from book_utils import extract_books, extract_books_from_romance_bot, extract_romance_bot_data, update_csv_with_romance_bot, write_book_to_csv, activity_logger
+from handlers.web_search.openlibrary_handler import enrich_with_openlibrary
+from handlers.web_search.googlebooks_handler import enrich_with_googlebooks
+from handlers.web_search.romanceio_handler import enrich_with_romanceio
 
 def is_entry_missing_data(row):
     # Define what counts as missing: no ISBN, no tags, no cover, etc.
@@ -44,11 +47,11 @@ def run_csv_double_check(mode='missing', csv_path='book_mentions.csv', praw_redd
                     mentions = extract_books_from_romance_bot(body)
                 for title, author in mentions:
                     # Try to enrich
-                    book = robust_lookup_open_library(title, author)
+                    book = enrich_with_openlibrary(title, author)
                     if not book:
-                        book = lookup_romance_io(title, author)
+                        book = enrich_with_romanceio(title, author)
                     if not book:
-                        book = lookup_google_books(title, author)
+                        book = enrich_with_googlebooks(title, author)
                     if book:
                         book['reddit_created_utc'] = getattr(comment, 'created_utc', '')
                         book['reddit_created_date'] = datetime.datetime.utcfromtimestamp(getattr(comment, 'created_utc', 0)).isoformat() if getattr(comment, 'created_utc', None) else ''
@@ -66,11 +69,11 @@ def run_csv_double_check(mode='missing', csv_path='book_mentions.csv', praw_redd
                 content = f"{post.title} {post.selftext}"
                 mentions = extract_books(content)
                 for title, author in mentions:
-                    book = robust_lookup_open_library(title, author)
+                    book = enrich_with_openlibrary(title, author)
                     if not book:
-                        book = lookup_romance_io(title, author)
+                        book = enrich_with_romanceio(title, author)
                     if not book:
-                        book = lookup_google_books(title, author)
+                        book = enrich_with_googlebooks(title, author)
                     if book:
                         book['reddit_created_utc'] = getattr(post, 'created_utc', '')
                         book['reddit_created_date'] = datetime.datetime.utcfromtimestamp(getattr(post, 'created_utc', 0)).isoformat() if getattr(post, 'created_utc', None) else ''

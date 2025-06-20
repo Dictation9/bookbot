@@ -1,4 +1,7 @@
-from book_utils import extract_books, robust_lookup_open_library, lookup_romance_io, lookup_google_books, write_book_to_csv, activity_logger, extract_romance_io_link
+from book_utils import extract_books, write_book_to_csv, activity_logger, extract_romance_io_link
+from handlers.web_search.openlibrary_handler import enrich_with_openlibrary
+from handlers.web_search.googlebooks_handler import enrich_with_googlebooks
+from handlers.web_search.romanceio_handler import enrich_with_romanceio
 import datetime
 
 def is_curly_bracket_comment(comment):
@@ -16,7 +19,7 @@ def handle_curly_bracket_comment(comment, seen):
         if key in seen:
             continue
         seen.add(key)
-        book = robust_lookup_open_library(title, author)
+        book = enrich_with_openlibrary(title, author)
         if book:
             book['reddit_created_utc'] = reddit_created_utc
             book['reddit_created_date'] = reddit_created_date
@@ -43,7 +46,7 @@ def handle_curly_bracket_comment(comment, seen):
             activity_logger.info(f"Found romance.io link in comment for: {title} by {author}")
             write_book_to_csv(romance_book)
             continue  # Skip further lookups for this mention
-        romance_book = lookup_romance_io(title, author)
+        romance_book = enrich_with_romanceio(title, author)
         if romance_book:
             romance_book['reddit_created_utc'] = reddit_created_utc
             romance_book['reddit_created_date'] = reddit_created_date
@@ -52,7 +55,7 @@ def handle_curly_bracket_comment(comment, seen):
             activity_logger.info(f"Found book mention in comment on romance.io: {romance_book['title']} by {romance_book['author']}")
             write_book_to_csv(romance_book)
         else:
-            google_book = lookup_google_books(title, author)
+            google_book = enrich_with_googlebooks(title, author)
             if google_book:
                 google_book['reddit_created_utc'] = reddit_created_utc
                 google_book['reddit_created_date'] = reddit_created_date

@@ -1,7 +1,7 @@
 import csv
 import praw
 import datetime
-from book_utils import extract_books, extract_books_from_romance_bot, extract_romance_bot_data, update_csv_with_romance_bot, write_book_to_csv, activity_logger
+from book_utils import extract_books, extract_romance_bot_data, update_csv_with_romance_bot, write_book_to_csv, activity_logger
 from handlers.web_search.openlibrary_handler import enrich_with_openlibrary
 from handlers.web_search.googlebooks_handler import enrich_with_googlebooks
 from handlers.web_search.romanceio_handler import enrich_with_romanceio
@@ -44,8 +44,6 @@ def run_csv_double_check(mode='missing', csv_path='book_mentions.csv', praw_redd
                 body = comment.body
                 # Try both curly and romance-bot extraction
                 mentions = extract_books(body)
-                if not mentions:
-                    mentions = extract_books_from_romance_bot(body)
                 for title, author in mentions:
                     # Try to enrich
                     book = enrich_with_openlibrary(title, author)

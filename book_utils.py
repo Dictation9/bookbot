@@ -106,48 +106,6 @@ def extract_romance_io_link(text):
     match = re.search(r'(https?://www\.romance\.io/[\w\-/\?=&#.]+)', text)
     return match.group(1) if match else ''
 
-def lookup_open_library(title, author):
-    import requests
-    url = f"https://openlibrary.org/search.json?title={title}&author={author}"
-    r = requests.get(url)
-    if not r.ok:
-        return None
-    docs = r.json().get("docs", [])
-    if not docs:
-        return None
-    doc = None
-    for d in docs:
-        doc_title = d.get("title", "").lower()
-        doc_authors = " ".join(d.get("author_name", [])).lower()
-        if title.lower() in doc_title and author.lower() in doc_authors:
-            doc = d
-            break
-    if not doc:
-        doc = docs[0]  # fallback to first
-    isbn_list = doc.get("isbn", [])
-    isbn13 = next((i for i in isbn_list if len(i) == 13), None)
-    isbn10 = next((i for i in isbn_list if len(i) == 10), None)
-    isbn_value = isbn13 or isbn10 or (isbn_list[0] if isbn_list else "N/A")
-    return {
-        "title": doc.get("title", title),
-        "author": ", ".join(doc.get("author_name", [author])),
-        "tags": doc.get("subject", [])[:10],
-        "cover_url": f"https://covers.openlibrary.org/b/id/{doc['cover_i']}-L.jpg" if doc.get("cover_i") else "N/A",
-        "isbn13": isbn_value
-    }
-
-def robust_lookup_open_library(title, author, retries=3, delay=2):
-    import time
-    for attempt in range(retries):
-        try:
-            return lookup_open_library(title, author)
-        except Exception as e:
-            if attempt < retries - 1:
-                time.sleep(delay)
-            else:
-                activity_logger.error(f"Open Library lookup failed for {title} by {author}: {e}")
-                return None
-
 def lookup_romance_io(title, author):
     import requests
     from bs4 import BeautifulSoup
@@ -171,33 +129,6 @@ def lookup_romance_io(title, author):
             }
     except Exception as e:
         activity_logger.error(f"Romance.io lookup failed for {title} by {author}: {e}")
-    return None
-
-def lookup_google_books(title, author):
-    import requests
-    params = {
-        'q': f'intitle:{title} inauthor:{author}',
-        'maxResults': 1
-    }
-    url = 'https://www.googleapis.com/books/v1/volumes'
-    try:
-        r = requests.get(url, params=params, timeout=10)
-        if r.ok:
-            items = r.json().get('items', [])
-            if items:
-                volume = items[0]['volumeInfo']
-                isbn13 = next((id['identifier'] for id in volume.get('industryIdentifiers', []) if id['type'] == 'ISBN_13'), 'N/A')
-                return {
-                    'title': volume.get('title', title),
-                    'author': ', '.join(volume.get('authors', [author])),
-                    'isbn13': isbn13,
-                    'tags': volume.get('categories', []),
-                    'cover_url': volume.get('imageLinks', {}).get('thumbnail', 'N/A'),
-                    'romance_io_url': '',
-                    'google_books_url': volume.get('infoLink', '')
-                }
-    except Exception as e:
-        activity_logger.error(f"Google Books lookup failed for {title} by {author}: {e}")
     return None
 
 # Set up activity logging (for use in both main and handlers)

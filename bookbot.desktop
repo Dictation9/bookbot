@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Book Bot
-Comment=Scan Reddit for book mentions
-Exec=lxterminal -e "/home/pi/bookbot/run.sh"
+Comment=A GUI for managing the Reddit Book Bot
+Exec=/home/pi/bookbot/run_gui.sh
 Icon=utilities-terminal
 Terminal=false
 Type=Application

@@ -1,6 +1,6 @@
 # 📚 Book Bot
 
-A modular and configurable Reddit bot that scans subreddits for book mentions, enriches the data using various web APIs, and provides robust logging and reporting. It's designed for long-term, autonomous operation.
+A modular and configurable Reddit bot that scans subreddits for book mentions, enriches the data using various web APIs, and provides robust logging and reporting. It's designed for long-term, autonomous operation with both command-line and graphical interfaces.
 
 ## ✨ Core Concepts
 
@@ -14,6 +14,23 @@ This bot operates in two primary modes:
     *   **Auto-Updating:** Pulls the latest version from Git to keep the bot current.
 
 Running `run.sh` is the primary way to interact with the bot, as it handles both manual scans and the configuration of these automated background tasks.
+
+## 🖥️ Graphical User Interface
+
+The bot now includes a modern GUI built with CustomTkinter that provides:
+
+- **Dashboard:** Run manual scans, send reports, and view live log output
+- **Configuration Editor:** Edit all settings from `config.ini` through a user-friendly form
+- **CSV Viewer:** Browse and search your collected book data in a table format
+- **Log Viewer:** View bot activity logs directly in the application
+
+### Running the GUI
+
+```bash
+./run_gui.sh
+```
+
+Or simply double-click the "Book Bot" icon on your desktop (after installation).
 
 ## 🛠️ Installation
 
@@ -38,7 +55,9 @@ All bot settings are managed in `config.ini`.
 client_id = your_client_id
 client_secret = your_client_secret
 user_agent = bookbot
-subreddit = your_subreddit
+# Subreddit(s) to scan. For multiple, use a comma-separated list (e.g., subreddit1,subreddit2).
+subreddit = lgbtbooks,mm_RomanceBooks
+# Set to None to fetch all posts/comments
 limit = 10 
 
 [email]
@@ -56,6 +75,7 @@ double_check_mode = missing
 double_check_times = 09:00,12:00,18:00
 storage_warn_percent = 80
 storage_critical_percent = 90
+# Path to monitor for disk usage. Default is "/", the root directory.
 storage_path_to_check = /
 ```
 
@@ -63,7 +83,7 @@ storage_path_to_check = /
 
 *   `client_id`, `client_secret`: Your Reddit API credentials.
 *   `user_agent`: A unique identifier for your bot (e.g., `bookbot-v1 by u/yourusername`).
-*   `subreddit`: The subreddit to scan (e.g., `romancebooks`).
+*   `subreddit`: The subreddit(s) to scan. Supports up to 40 subreddits in a comma-separated list.
 *   `limit`: The number of recent posts to scan. Leave this blank or set to `None` to scan all available posts.
 
 #### `[email]`
@@ -82,7 +102,9 @@ storage_path_to_check = /
 
 ## 📝 Usage
 
-### Performing a One-Off Scan
+### Command Line Interface
+
+#### Performing a One-Off Scan
 
 This will run the bot once and update the cron schedule based on your `config.ini`.
 
@@ -90,11 +112,11 @@ This will run the bot once and update the cron schedule based on your `config.in
 ./run.sh
 ```
 
-### Automated Scheduling
+#### Automated Scheduling
 
 The scheduled tasks (enrichment, reporting, etc.) are managed by `cron`. When you run `./run.sh`, the script `cron_setup.sh` reads the `double_check_times` from your `config.ini` and automatically creates the necessary cron jobs for you. You can change the schedule at any time by editing the config file and re-running `./run.sh`.
 
-### Manually Sending a Full Report
+#### Manually Sending a Full Report
 
 If you want an immediate email report with the CSV and all log files, you can run:
 
@@ -104,6 +126,20 @@ If you want an immediate email report with the CSV and all log files, you can ru
 
 This script is smart and will automatically split large log files into multiple emails to avoid attachment size limits.
 
+### Graphical User Interface
+
+Launch the GUI for a more user-friendly experience:
+
+```bash
+./run_gui.sh
+```
+
+The GUI provides:
+- **One-click scanning** with live progress updates
+- **Easy configuration editing** without touching text files
+- **Real-time log viewing** to monitor bot activity
+- **CSV data browsing** with search and sort capabilities
+
 ## 🔄 Updating
 
 To update the bot to the latest version from GitHub without losing your configuration:
@@ -112,13 +148,15 @@ To update the bot to the latest version from GitHub without losing your configur
 ./manual_update.sh
 ```
 
-This script pulls the latest code, restores your `config.ini`, and runs `pip install` to ensure any new dependencies are added.
+This script pulls the latest code, restores your `config.ini`, and runs `pip install --upgrade` to ensure any new dependencies are added efficiently.
 
 ## 📂 File Structure
 
 *   `bookbot.py`: The main application entry point for manual scans.
 *   `scheduled_check.py`: The script executed by `cron` for all automated tasks.
 *   `run.sh`: The recommended script for running the bot and setting up cron jobs.
+*   `run_gui.sh`: Launches the graphical user interface.
+*   `gui.py`: The main GUI application code.
 *   `install.sh`: The initial installation script.
 *   `config.ini`: Your private configuration and API keys.
 *   `book_mentions.csv`: The master CSV where all collected data is stored.
@@ -135,6 +173,8 @@ This script pulls the latest code, restores your `config.ini`, and runs `pip ins
     - Check `logs/cron.log` for any error messages from the scheduled runs.
     - Make sure your system's `cron` daemon is running.
 - **Permission Denied:** Ensure all `.sh` scripts are executable by running `chmod +x *.sh`.
+- **GUI Not Starting:** Make sure `customtkinter` is installed by running `pip install customtkinter` in your virtual environment.
+- **Desktop Shortcut Not Working:** Verify the path in `bookbot.desktop` matches your actual installation directory.
 
 ## 🛡️ License
 MIT License

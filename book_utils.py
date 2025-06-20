@@ -9,18 +9,6 @@ def extract_books(text):
     pattern = r"\{([^\{\}]+?)\s+by\s+([^\{\}]+?)\}"
     return [(t.strip(), a.strip()) for t, a in re.findall(pattern, text, re.IGNORECASE)]
 
-def extract_romance_bot_data(text):
-    # Extract romance.io link
-    link_match = re.search(r'(https?://www\.romance\.io/[\w\-/\?=&#.]+)', text)
-    romance_link = link_match.group(1) if link_match else ''
-    # Extract topics (e.g. 'Topics: topic1, topic2, ...')
-    topics_match = re.search(r'Topics?:\s*([^\n]+)', text, re.IGNORECASE)
-    topics = [t.strip() for t in topics_match.group(1).split(',')] if topics_match else []
-    # Extract steam level (e.g. 'Steam: Open door')
-    steam_match = re.search(r'Steam:\s*([^\n]+)', text, re.IGNORECASE)
-    steam = steam_match.group(1).strip() if steam_match else ''
-    return romance_link, topics, steam
-
 def update_csv_with_romance_bot(title, author, romance_io_url, topics, steam, csv_path="book_mentions.csv", reddit_url=""):
     key = (title.strip().lower(), author.strip().lower())
     updated = False

@@ -1,6 +1,6 @@
 import re
 import datetime
-from book_utils import extract_books, extract_romance_bot_data, update_csv_with_romance_bot, write_book_to_csv, activity_logger
+from book_utils import extract_books, update_csv_with_romance_bot, write_book_to_csv, activity_logger
 
 def is_romance_bot(comment):
     return getattr(comment, 'author', None) and str(comment.author).lower() == 'romance-bot'
@@ -25,6 +25,22 @@ def extract_markdown_title_author(text):
         title, author = match.group(1).strip(), match.group(2).strip()
         return [(title, author, '')]
     return []
+
+def extract_romance_bot_data(text):
+    # Extract romance.io link
+    link_match = re.search(r'(https?://www\.romance\.io/[\w\-/\?=&#.]+)', text)
+    romance_link = link_match.group(1) if link_match else ''
+    # Extract topics (e.g. 'Topics: topic1, topic2, ...')
+    topics_match = re.search(r'Topics?:\s*([^\n]+)', text, re.IGNORECASE)
+    topics = [t.strip() for t in topics_match.group(1).split(',')] if topics_match else []
+    # Extract steam level (markdown or plain)
+    steam_match = re.search(r'Steam\s*\[([^\]]+)\]\([^\)]+\)', text, re.IGNORECASE)
+    if steam_match:
+        steam = steam_match.group(1).strip()
+    else:
+        steam_match = re.search(r'Steam:\s*([^\n]+)', text, re.IGNORECASE)
+        steam = steam_match.group(1).strip() if steam_match else ''
+    return romance_link, topics, steam
 
 def handle_romance_bot_comment(comment, seen):
     reddit_created_utc = getattr(comment, 'created_utc', None)

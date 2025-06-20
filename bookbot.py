@@ -12,7 +12,7 @@ import prawcore
 from bs4 import BeautifulSoup
 import datetime
 from handlers.romance_bot_handler import is_romance_bot, handle_romance_bot_comment
-from book_utils import extract_books, extract_books_from_romance_bot, extract_romance_bot_data, update_csv_with_romance_bot, write_book_to_csv, activity_logger
+from book_utils import extract_books, extract_romance_bot_data, update_csv_with_romance_bot, write_book_to_csv, activity_logger
 from handlers.curly_bracket_handler import is_curly_bracket_comment, handle_curly_bracket_comment
 from handlers.csv_double_check_handler import run_csv_double_check
 
@@ -276,23 +276,6 @@ def update_csv_with_romance_bot(title, author, romance_io_url, topics, steam, cs
             writer.writeheader()
             writer.writerows(rows)
     return updated
-
-def extract_books_from_romance_bot(text):
-    """
-    Extracts 'Title by Author' from the first line of a romance-bot comment.
-    Returns a list of (title, author) tuples.
-    """
-    # Romance-bot usually puts the book mention on the first line
-    lines = text.strip().splitlines()
-    if not lines:
-        return []
-    first_line = lines[0].strip()
-    # Match 'Title by Author' (not in curly brackets)
-    match = re.match(r"(.+?)\s+by\s+(.+)", first_line, re.IGNORECASE)
-    if match:
-        title, author = match.group(1).strip(), match.group(2).strip()
-        return [(title, author)]
-    return []
 
 def process_comments(post, seen):
     try:

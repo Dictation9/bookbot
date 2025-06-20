@@ -22,6 +22,7 @@ A Raspberry Pi–friendly Reddit bot that finds `{Book Title by Author}` mention
 - **Option to email the CSV** after each run (configurable in `config.ini`)
 - **Robust error handling and rate limit management**
 - **Manual update script** to safely update the bot while preserving your config
+- **Modular bot handler support** – easily add new bot handlers for different Reddit bots (see below)
 
 ## 🛠️ Install
 
@@ -118,3 +119,35 @@ MIT License
 - `cron_setup.sh` – Sets up daily/weekly tasks
 - `install.sh` – Full install script
 - `bookbot.desktop` – Desktop shortcut for Raspberry Pi
+
+## 🧩 Modular Bot Handlers
+
+The bot now uses a modular structure for handling different Reddit bots. Each bot handler is in its own file, making it easy to add, update, or test support for new bots.
+
+### Adding a New Bot Handler
+
+1. **Copy the template:**
+   - Use `bot_handler_template.py` as a starting point for your new bot handler.
+2. **Implement detection and handling:**
+   - Implement `is_<yourbot>_bot(comment)` and `handle_<yourbot>_bot_comment(comment, seen)` in your new file.
+3. **Register the handler in `bookbot.py`:**
+   - Import your handler and add it to the `process_comments` logic, just like `romance_bot_handler`.
+
+**Example:**
+```python
+from romance_bot_handler import is_romance_bot, handle_romance_bot_comment
+from fantasy_bot_handler import is_fantasy_bot, handle_fantasy_bot_comment
+
+for comment in comments:
+    if is_romance_bot(comment):
+        handle_romance_bot_comment(comment, seen)
+        continue
+    if is_fantasy_bot(comment):
+        handle_fantasy_bot_comment(comment, seen)
+        continue
+    # ... generic extraction ...
+```
+
+### Existing Handlers
+- `romance_bot_handler.py`: Handles comments from romance-bot, including both curly-brace and plain `Title by Author` formats.
+- `bot_handler_template.py`: Template for creating new handlers.

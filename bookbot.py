@@ -11,6 +11,7 @@ import time
 import prawcore
 from bs4 import BeautifulSoup
 import datetime
+from romance_bot_handler import is_romance_bot, handle_romance_bot_comment
 
 # Set up error logging
 logging.basicConfig(filename="error.log", level=logging.ERROR,
@@ -266,22 +267,41 @@ def update_csv_with_romance_bot(title, author, romance_io_url, topics, steam, cs
             writer.writerows(rows)
     return updated
 
+def extract_books_from_romance_bot(text):
+    """
+    Extracts 'Title by Author' from the first line of a romance-bot comment.
+    Returns a list of (title, author) tuples.
+    """
+    # Romance-bot usually puts the book mention on the first line
+    lines = text.strip().splitlines()
+    if not lines:
+        return []
+    first_line = lines[0].strip()
+    # Match 'Title by Author' (not in curly brackets)
+    match = re.match(r"(.+?)\s+by\s+(.+)", first_line, re.IGNORECASE)
+    if match:
+        title, author = match.group(1).strip(), match.group(2).strip()
+        return [(title, author)]
+    return []
+
 def process_comments(post, seen):
     try:
         post.comments.replace_more(limit=None)
         for comment in post.comments.list():
+            # Romance-bot handler
+            if is_romance_bot(comment):
+                handle_romance_bot_comment(comment, seen)
+                continue  # Don't process further for romance-bot
+            # Add more bot handlers here, e.g.:
+            # from fantasy_bot_handler import is_fantasy_bot, handle_fantasy_bot_comment
+            # if is_fantasy_bot(comment):
+            #     handle_fantasy_bot_comment(comment, seen)
+            #     continue
+            # Default: generic extraction
             comment_mentions = extract_books(comment.body)
             reddit_created_utc = getattr(comment, 'created_utc', None)
             reddit_created_date = datetime.datetime.utcfromtimestamp(reddit_created_utc).isoformat() if reddit_created_utc else ''
             romance_link = extract_romance_io_link(comment.body)
-            # If this is a romance-bot comment, try to update existing CSV entries
-            if getattr(comment, 'author', None) and str(comment.author).lower() == 'romance-bot':
-                for title, author in comment_mentions:
-                    romance_bot_link, romance_bot_topics, romance_bot_steam = extract_romance_bot_data(comment.body)
-                    updated = update_csv_with_romance_bot(title, author, romance_bot_link, romance_bot_topics, romance_bot_steam)
-                    if updated:
-                        activity_logger.info(f"Updated CSV with romance-bot data for: {title} by {author}")
-                continue  # Don't add new entries for romance-bot comments
             for title, author in comment_mentions:
                 key = (title.lower(), author.lower())
                 if key in seen:

@@ -358,26 +358,30 @@ def send_csv_report():
     except Exception as e:
         print(f"❌ Failed to send CSV/logs email: {e}")
 
-def main():
-    send_test_email()
-    auto_update()
-    if DELETE_CSV_ON_START:
-        csv_path = "book_mentions.csv"
-        if os.path.exists(csv_path):
-            os.remove(csv_path)
-            activity_logger.info("Deleted book_mentions.csv at start of run due to config setting.")
-        else:
-            activity_logger.info("CSV deletion requested but book_mentions.csv does not exist.")
-    activity_logger.info(f"Scanning r/{SUBREDDIT_NAME} for book mentions...")
-    console.print(f"[green]Scanning r/{SUBREDDIT_NAME} for book mentions...[/]\n")
-    activity_logger.info(f"Scanning r/{SUBREDDIT_NAME} for book mentions...\n")
-    reddit = praw.Reddit(
-        client_id=REDDIT_CLIENT_ID,
-        client_secret=REDDIT_SECRET,
-        user_agent=REDDIT_USER_AGENT
-    )
+def get_next_run_time(check_times):
+    now = datetime.datetime.now()
+    today_run_times = []
+    for t_str in check_times:
+        h, m = map(int, t_str.split(':'))
+        today_run_times.append(now.replace(hour=h, minute=m, second=0, microsecond=0))
+    
+    # Find the next run time today
+    future_times_today = sorted([t for t in today_run_times if t > now])
+    if future_times_today:
+        return future_times_today[0]
+    
+    # If no more runs today, schedule for the first time tomorrow
+    tomorrow = now + datetime.timedelta(days=1)
+    first_run_tomorrow = sorted(today_run_times)[0]
+    return tomorrow.replace(hour=first_run_tomorrow.hour, minute=first_run_tomorrow.minute, second=0, microsecond=0)
+
+def run_scan_and_enrich(reddit):
+    # This function contains the main scanning logic
     subreddit = reddit.subreddit(SUBREDDIT_NAME)
     seen = set()
+    console.print(f"[green]Scanning r/{SUBREDDIT_NAME} for book mentions...[/]\n")
+    activity_logger.info(f"Scanning r/{SUBREDDIT_NAME} for book mentions...\n")
+
     posts = subreddit.new(limit=POST_LIMIT) if POST_LIMIT else subreddit.new(limit=None)
     for post in posts:
         content = f"{post.title} {post.selftext}"
@@ -395,7 +399,7 @@ def main():
             if book:
                 book['reddit_created_utc'] = reddit_created_utc
                 book['reddit_created_date'] = reddit_created_date
-                book['romance_io_url'] = romance_link  # Always include romance.io link if present
+                book['romance_io_url'] = romance_link
                 book['reddit_url'] = reddit_url
                 activity_logger.info(f"Found book mention: {book['title']} by {book['author']}")
                 write_book_to_csv(book)
@@ -422,39 +426,50 @@ def main():
                     activity_logger.info(f"No data found on Open Library or romance.io, but found on Google Books: {title} by {author}")
                 else:
                     no_data_book = {
-                        'title': title,
-                        'author': author,
-                        'isbn13': 'N/A',
-                        'tags': [],
-                        'cover_url': 'N/A',
-                        'romance_io_url': '',
-                        'google_books_url': '',
-                        'steam': '',
-                        'reddit_created_utc': reddit_created_utc,
-                        'reddit_created_date': reddit_created_date,
-                        'reddit_url': reddit_url
+                        'title': title, 'author': author, 'isbn13': 'N/A', 'tags': [], 'cover_url': 'N/A',
+                        'romance_io_url': '', 'google_books_url': '', 'steam': '',
+                        'reddit_created_utc': reddit_created_utc, 'reddit_created_date': reddit_created_date, 'reddit_url': reddit_url
                     }
                     activity_logger.info(f"No data found for: {title} by {author}, adding to CSV anyway.")
                     write_book_to_csv(no_data_book)
                     console.print(f"[yellow]No data found for: {title} by {author}[/]")
                     activity_logger.info(f"No data found for: {title} by {author}")
+
         process_comments(post, seen)
+    
     activity_logger.info(f"✅ Book scan complete.")
     console.print(f"[cyan]✅ Book scan complete.[/]")
     activity_logger.info("✅ Book scan complete.")
-    # Double-check CSV if enabled
+
+    # Double-check CSV if enabled on run
     if DOUBLE_CHECK_ON_RUN:
         activity_logger.info(f"Running CSV double-check in mode: {DOUBLE_CHECK_MODE}")
         run_csv_double_check(mode=DOUBLE_CHECK_MODE, praw_reddit=reddit)
-    # Send CSV email after double-check (if enabled)
+
+def main():
+    send_test_email()
+    auto_update()
+
+    if DELETE_CSV_ON_START:
+        csv_path = "book_mentions.csv"
+        if os.path.exists(csv_path):
+            os.remove(csv_path)
+            activity_logger.info("Deleted book_mentions.csv at start of run due to config setting.")
+        else:
+            activity_logger.info("CSV deletion requested but book_mentions.csv does not exist.")
+
+    reddit = praw.Reddit(
+        client_id=REDDIT_CLIENT_ID,
+        client_secret=REDDIT_SECRET,
+        user_agent=REDDIT_USER_AGENT
+    )
+    
+    run_scan_and_enrich(reddit)
+    
+    # After the scan, send a final email if enabled.
+    # For continuous, scheduled checks, run scheduled_check.py via cron.
     if SEND_CSV_EMAIL:
         send_csv_report()
-    # Pseudo-code for scheduled double-checks (daemon mode):
-    # while True:
-    #     now = datetime.datetime.now().strftime('%H:%M')
-    #     if now in DOUBLE_CHECK_TIMES:
-    #         run_csv_double_check(mode=DOUBLE_CHECK_MODE, praw_reddit=reddit)
-    #     time.sleep(60)
 
 def livestream_subreddit():
     reddit = praw.Reddit(
@@ -483,6 +498,11 @@ def livestream_subreddit():
 if __name__ == "__main__":
     try:
         main()
+    except KeyboardInterrupt:
+        console.print("\nBot stopped by user.")
+        activity_logger.info("Bot stopped by user.")
+        exit(0)
     except Exception as e:
-        logging.exception("Bot crashed:")
-        print("❌ An error occurred. Check error.log for details.")
+        activity_logger.error(f"An unexpected error occurred in main: {e}", exc_info=True)
+        print(f"An unexpected error occurred: {e}")
+        exit(1)

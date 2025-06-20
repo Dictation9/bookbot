@@ -1,40 +1,37 @@
 # 📚 Book Bot
 
-A Raspberry Pi–friendly Reddit bot that finds `{Book Title by Author}` mentions in posts and comments, enriches them using Open Library, romance.io, and Google Books, and emails you daily updates with a CSV export.
+A modular and configurable Reddit bot that scans subreddits for book mentions, enriches the data using various web APIs, and provides robust logging and reporting. It's designed for long-term, autonomous operation.
 
-## 🚀 Features
+## ✨ Core Concepts
 
-- **Scans posts and comments** in a subreddit for `{Book Title by Author}` (curly braces format)
-- **Extracts book data** from Open Library, then romance.io, then Google Books (in that order)
-- **Captures romance.io links** if present in posts/comments, even if Open Library provides data
-- **Exports all found books to a CSV** with the following columns:
-  - title
-  - author
-  - isbn13
-  - tags (from Open Library or Google Books)
-  - cover_url
-  - romance_io_url (from scraping or direct link in post/comment)
-  - google_books_url
-  - datetime_added (when the entry was added to the CSV)
-  - reddit_created_utc (when the post/comment was uploaded to Reddit, UTC timestamp)
-  - reddit_created_date (human-readable date)
-- **Configurable post/comment limit** via `config.ini`
-- **Option to email the CSV** after each run (configurable in `config.ini`)
-- **Robust error handling and rate limit management**
-- **Manual update script** to safely update the bot while preserving your config
-- **Modular bot handler support** – easily add new bot handlers for different Reddit bots (see below)
+This bot operates in two primary modes:
 
-## 🛠️ Install
+1.  **Manual Scan (`run.sh`):** When you execute `./run.sh`, the bot performs a single, immediate scan of the target subreddit based on your `config.ini` settings. This script will also set up or update the scheduled tasks, ensuring your cron job always matches your config.
+2.  **Scheduled Tasks (`scheduled_check.py`):** This script is designed to be run automatically by a scheduler like `cron`. It handles all recurring maintenance tasks:
+    *   **Data Enrichment:** Re-scans the CSV to find and fill in any missing book information.
+    *   **Email Reporting:** Sends the CSV data and log files via email.
+    *   **Storage Monitoring:** Checks disk space and sends an alert if it's running low.
+    *   **Auto-Updating:** Pulls the latest version from Git to keep the bot current.
+
+Running `run.sh` is the primary way to interact with the bot, as it handles both manual scans and the configuration of these automated background tasks.
+
+## 🛠️ Installation
+
+Installation is handled by a single script. It will create a Python virtual environment, install all dependencies, and set up the necessary files.
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Dictation9/bookbot/main/install.sh | bash
+# Make the installer executable
+chmod +x install.sh
+
+# Run the installer
+./install.sh
 ```
 
-Then edit `config.ini` to add your Reddit and email credentials, and set your preferences.
+After installation, you **must** edit the `config.ini` file to add your Reddit API and email credentials.
 
-## ⚙️ Configuration
+## ⚙️ Configuration (`config.ini`)
 
-Edit `config.ini`:
+All bot settings are managed in `config.ini`.
 
 ```ini
 [reddit]
@@ -42,7 +39,7 @@ client_id = your_client_id
 client_secret = your_client_secret
 user_agent = bookbot
 subreddit = your_subreddit
-limit = 10  # Set to None to fetch all posts/comments
+limit = 10 
 
 [email]
 from = your_email@gmail.com
@@ -50,63 +47,94 @@ to = your_email@gmail.com
 password = your_app_password
 smtp_server = smtp.gmail.com
 smtp_port = 587
-send_csv_email = true  # Set to false to disable sending CSV via email
+send_csv_email = true 
+
+[general]
+delete_csv_on_start = false
+double_check_csv_on_run = false
+double_check_mode = missing
+double_check_times = 09:00,12:00,18:00
+storage_warn_percent = 80
+storage_critical_percent = 90
+storage_path_to_check = /
 ```
 
-- **limit**: How many posts/comments to scan. Set to `None` for all.
-- **send_csv_email**: Set to `true` to email the CSV after each run, or `false` to disable.
+#### `[reddit]`
+
+*   `client_id`, `client_secret`: Your Reddit API credentials.
+*   `user_agent`: A unique identifier for your bot (e.g., `bookbot-v1 by u/yourusername`).
+*   `subreddit`: The subreddit to scan (e.g., `romancebooks`).
+*   `limit`: The number of recent posts to scan. Leave this blank or set to `None` to scan all available posts.
+
+#### `[email]`
+
+*   `from`, `to`, `password`, `smtp_server`, `smtp_port`: Your email account details for sending reports. For Gmail, you'll need to use an "App Password".
+*   `send_csv_email`: Set to `true` to enable scheduled email reports.
+
+#### `[general]`
+
+*   `delete_csv_on_start`: If `true`, `book_mentions.csv` will be wiped clean every time you run the bot manually. **Warning: This erases all collected data.**
+*   `double_check_csv_on_run`: If `true`, the bot will perform a data enrichment pass after every manual scan.
+*   `double_check_mode`: Determines what the scheduled enrichment task does. `missing` only fills in incomplete rows; `all` re-checks every book.
+*   `double_check_times`: Configures the schedule for the automated tasks. Can be a standard cron expression (e.g., `0 * * * *` for every hour) or a comma-separated list of 24-hour times (e.g., `09:00,12:00,18:00`). Leave blank to disable all scheduled tasks.
+*   `storage_warn_percent`, `storage_critical_percent`: The disk usage thresholds (in %) for sending email alerts.
+*   `storage_path_to_check`: The disk path to monitor (e.g., `/` for the main disk, or `/mnt/data` for a specific drive).
 
 ## 📝 Usage
 
-1. Run the bot:
-   ```bash
-   ./run.sh
-   ```
-2. The bot will scan the configured subreddit for `{Book Title by Author}` in posts and comments.
-3. For each match, it will:
-   - Try to fetch book data from Open Library.
-   - If not found, try romance.io (using direct links in comments if present).
-   - If still not found, try Google Books.
-   - If no data is found, add minimal info (title/author only).
-   - Always include the romance.io link if present in the post/comment.
-4. All results are saved to `book_mentions.csv`.
-5. If enabled, the CSV will be emailed to you after the scan.
+### Performing a One-Off Scan
 
-## 🔄 Manual Update
+This will run the bot once and update the cron schedule based on your `config.ini`.
 
-To safely update your bot to the latest version **without overwriting your config.ini**, use:
+```bash
+./run.sh
+```
+
+### Automated Scheduling
+
+The scheduled tasks (enrichment, reporting, etc.) are managed by `cron`. When you run `./run.sh`, the script `cron_setup.sh` reads the `double_check_times` from your `config.ini` and automatically creates the necessary cron jobs for you. You can change the schedule at any time by editing the config file and re-running `./run.sh`.
+
+### Manually Sending a Full Report
+
+If you want an immediate email report with the CSV and all log files, you can run:
+
+```bash
+./send_report.sh
+```
+
+This script is smart and will automatically split large log files into multiple emails to avoid attachment size limits.
+
+## 🔄 Updating
+
+To update the bot to the latest version from GitHub without losing your configuration:
 
 ```bash
 ./manual_update.sh
 ```
-This will pull the latest code and restore your config file automatically.
 
-## 📄 CSV Columns
-- `title`, `author`, `isbn13`, `tags`, `cover_url`, `romance_io_url`, `google_books_url`, `datetime_added`, `reddit_created_utc`, `reddit_created_date`
+This script pulls the latest code, restores your `config.ini`, and runs `pip install` to ensure any new dependencies are added.
 
-## 🧩 Dependencies
-- Python 3.7+
-- praw
-- requests
-- rich
-- beautifulsoup4
+## 📂 File Structure
 
-All dependencies are installed automatically by `install.sh`.
+*   `bookbot.py`: The main application entry point for manual scans.
+*   `scheduled_check.py`: The script executed by `cron` for all automated tasks.
+*   `run.sh`: The recommended script for running the bot and setting up cron jobs.
+*   `install.sh`: The initial installation script.
+*   `config.ini`: Your private configuration and API keys.
+*   `book_mentions.csv`: The master CSV where all collected data is stored.
+*   `logs/`: Contains `bot.log` (activity log), `comment_data.log` (raw comment data for debugging), and `cron.log` (output from scheduled tasks).
+*   `handlers/`: Contains the logic for parsing different comment formats (`curly_bracket_handler.py`, `romance_bot_handler.py`) and for fetching data from web sources (`web_search/`).
+*   `email_handlers/`: Contains all scripts related to sending emails, including the utility for splitting large files.
 
 ## 🛠️ Troubleshooting
 
-- **ModuleNotFoundError: No module named 'bs4'**
-  - Run: `pip install beautifulsoup4`
-- **ModuleNotFoundError: No module named 'praw' or 'rich'**
-  - Run: `pip install praw rich prawcore`
-- **ValueError: invalid literal for int() with base 10: '10  # Set to None...'**
-  - Remove comments from the same line as values in `config.ini`. Place comments on their own line above the setting.
-- **Authentication errors with Reddit or email**
-  - Double-check your credentials in `config.ini`.
-- **Bot not finding any books**
-  - Make sure posts/comments use the `{Book Title by Author}` format with curly braces.
-- **CSV not being created**
-  - Ensure the bot has write permissions in the directory and that at least one book mention is found.
+- **`ValueError: invalid literal for int()`:** You likely have an inline comment (`#`) in your `config.ini` on the same line as a value. All comments must be on their own line.
+- **Authentication Errors:** Double-check all credentials in `config.ini`. Ensure you are using an "App Password" for your email if using Gmail.
+- **Cron Job Not Running:**
+    - Run `crontab -l` to see if the jobs were created.
+    - Check `logs/cron.log` for any error messages from the scheduled runs.
+    - Make sure your system's `cron` daemon is running.
+- **Permission Denied:** Ensure all `.sh` scripts are executable by running `chmod +x *.sh`.
 
 ## 🛡️ License
 MIT License

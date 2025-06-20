@@ -8,13 +8,14 @@ def is_romance_bot(comment):
 def handle_romance_bot_comment(comment, seen):
     reddit_created_utc = getattr(comment, 'created_utc', None)
     reddit_created_date = datetime.datetime.utcfromtimestamp(reddit_created_utc).isoformat() if reddit_created_utc else ''
+    reddit_url = f"https://reddit.com{getattr(comment, 'permalink', '')}"
     # Try both curly-brace and plain extraction
     comment_mentions = extract_books(comment.body)
     if not comment_mentions:
         comment_mentions = extract_books_from_romance_bot(comment.body)
     for title, author in comment_mentions:
         romance_bot_link, romance_bot_topics, romance_bot_steam = extract_romance_bot_data(comment.body)
-        updated = update_csv_with_romance_bot(title, author, romance_bot_link, romance_bot_topics, romance_bot_steam)
+        updated = update_csv_with_romance_bot(title, author, romance_bot_link, romance_bot_topics, romance_bot_steam, reddit_url=reddit_url)
         if not updated:
             # If not already in CSV, add as new
             romance_book = {
@@ -27,7 +28,8 @@ def handle_romance_bot_comment(comment, seen):
                 'google_books_url': '',
                 'steam': romance_bot_steam,
                 'reddit_created_utc': reddit_created_utc,
-                'reddit_created_date': reddit_created_date
+                'reddit_created_date': reddit_created_date,
+                'reddit_url': reddit_url
             }
             write_book_to_csv(romance_book)
             activity_logger.info(f"Added romance-bot book: {title} by {author}") 

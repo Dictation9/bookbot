@@ -1,0 +1,86 @@
+import csv
+import praw
+import datetime
+from book_utils import extract_books, extract_books_from_romance_bot, extract_romance_bot_data, update_csv_with_romance_bot, write_book_to_csv, activity_logger, robust_lookup_open_library, lookup_romance_io, lookup_google_books
+
+def is_entry_missing_data(row):
+    # Define what counts as missing: no ISBN, no tags, no cover, etc.
+    return (
+        row.get('isbn13', 'N/A') in ('', 'N/A') or
+        not row.get('tags') or
+        row.get('cover_url', 'N/A') in ('', 'N/A')
+    )
+
+def run_csv_double_check(mode='missing', csv_path='book_mentions.csv', praw_reddit=None):
+    """
+    mode: 'missing' (only incomplete entries) or 'all' (every entry)
+    praw_reddit: a praw.Reddit instance
+    """
+    if praw_reddit is None:
+        raise ValueError("praw_reddit instance required")
+    try:
+        with open(csv_path, newline='', encoding='utf-8') as csvfile:
+            rows = list(csv.DictReader(csvfile))
+    except FileNotFoundError:
+        activity_logger.warning("CSV file not found for double-check.")
+        return
+    updated = False
+    for row in rows:
+        if mode == 'missing' and not is_entry_missing_data(row):
+            continue
+        reddit_url = row.get('reddit_url', '')
+        if not reddit_url:
+            continue
+        # Extract the Reddit ID from the URL
+        if '/comments/' in reddit_url:
+            # It's a comment
+            try:
+                comment_id = reddit_url.split('/comments/')[1].split('/')[2]
+                comment = praw_reddit.comment(id=comment_id)
+                body = comment.body
+                # Try both curly and romance-bot extraction
+                mentions = extract_books(body)
+                if not mentions:
+                    mentions = extract_books_from_romance_bot(body)
+                for title, author in mentions:
+                    # Try to enrich
+                    book = robust_lookup_open_library(title, author)
+                    if not book:
+                        book = lookup_romance_io(title, author)
+                    if not book:
+                        book = lookup_google_books(title, author)
+                    if book:
+                        book['reddit_created_utc'] = getattr(comment, 'created_utc', '')
+                        book['reddit_created_date'] = datetime.datetime.utcfromtimestamp(getattr(comment, 'created_utc', 0)).isoformat() if getattr(comment, 'created_utc', None) else ''
+                        book['reddit_url'] = reddit_url
+                        write_book_to_csv(book)
+                        activity_logger.info(f"Double-check updated: {title} by {author} from comment {reddit_url}")
+                        updated = True
+            except Exception as e:
+                activity_logger.error(f"Failed to double-check comment {reddit_url}: {e}")
+        else:
+            # It's a post
+            try:
+                post_id = reddit_url.rstrip('/').split('/')[-1]
+                post = praw_reddit.submission(id=post_id)
+                content = f"{post.title} {post.selftext}"
+                mentions = extract_books(content)
+                for title, author in mentions:
+                    book = robust_lookup_open_library(title, author)
+                    if not book:
+                        book = lookup_romance_io(title, author)
+                    if not book:
+                        book = lookup_google_books(title, author)
+                    if book:
+                        book['reddit_created_utc'] = getattr(post, 'created_utc', '')
+                        book['reddit_created_date'] = datetime.datetime.utcfromtimestamp(getattr(post, 'created_utc', 0)).isoformat() if getattr(post, 'created_utc', None) else ''
+                        book['reddit_url'] = reddit_url
+                        write_book_to_csv(book)
+                        activity_logger.info(f"Double-check updated: {title} by {author} from post {reddit_url}")
+                        updated = True
+            except Exception as e:
+                activity_logger.error(f"Failed to double-check post {reddit_url}: {e}")
+    if updated:
+        activity_logger.info("CSV double-check completed with updates.")
+    else:
+        activity_logger.info("CSV double-check completed. No updates made.") 

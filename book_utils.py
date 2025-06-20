@@ -11,11 +11,11 @@ def extract_books(text):
     pattern = r"\{([^\{\}]+?)\s+by\s+([^\{\}]+?)\}"
     return [(t.strip(), a.strip()) for t, a in re.findall(pattern, text, re.IGNORECASE)]
 
-def update_csv_with_romance_bot(title, author, romance_io_url, topics, steam, csv_path="book_mentions.csv", reddit_url=""):
+def update_csv_with_romance_bot(title, author, romance_io_url, topics, steam, steam_rating='', csv_path="book_mentions.csv", reddit_url=""):
     key = (title.strip().lower(), author.strip().lower())
     updated = False
     rows = []
-    fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url', 'romance_io_url', 'google_books_url', 'steam', 'datetime_added', 'reddit_created_utc', 'reddit_created_date', 'reddit_url']
+    fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url', 'romance_io_url', 'google_books_url', 'steam', 'steam_rating', 'datetime_added', 'reddit_created_utc', 'reddit_created_date', 'reddit_url']
     try:
         with open(csv_path, newline='', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
@@ -28,6 +28,8 @@ def update_csv_with_romance_bot(title, author, romance_io_url, topics, steam, cs
                         row['tags'] = ', '.join(topics)
                     if steam:
                         row['steam'] = steam
+                    if steam_rating:
+                        row['steam_rating'] = steam_rating
                     if reddit_url:
                         row['reddit_url'] = reddit_url
                     updated = True
@@ -59,7 +61,7 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
     if key in existing:
         return
     write_header = not os.path.exists(csv_path)
-    fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url', 'romance_io_url', 'google_books_url', 'steam', 'datetime_added', 'reddit_created_utc', 'reddit_created_date', 'reddit_url']
+    fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url', 'romance_io_url', 'google_books_url', 'steam', 'steam_rating', 'datetime_added', 'reddit_created_utc', 'reddit_created_date', 'reddit_url']
     with open(csv_path, 'a', newline='', encoding='utf-8') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         if write_header:
@@ -73,6 +75,7 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
             'romance_io_url': book.get('romance_io_url', ''),
             'google_books_url': book.get('google_books_url', ''),
             'steam': book.get('steam', ''),
+            'steam_rating': book.get('steam_rating', ''),
             'datetime_added': datetime.datetime.now().isoformat(),
             'reddit_created_utc': book.get('reddit_created_utc', ''),
             'reddit_created_date': book.get('reddit_created_date', ''),

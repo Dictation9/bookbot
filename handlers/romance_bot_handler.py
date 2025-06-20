@@ -15,6 +15,15 @@ comment_data_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s]
 if not comment_data_logger.hasHandlers():
     comment_data_logger.addHandler(comment_data_handler)
 
+STEAM_LABEL_TO_NUM = {
+    "None": 1,
+    "Mild": 2,
+    "Moderate": 3,
+    "Explicit": 4,
+    "Explicit and plentiful": 5,
+    # Add common variants/typos as needed
+}
+
 def is_romance_bot(comment):
     return getattr(comment, 'author', None) and str(comment.author).lower() == 'romance-bot'
 
@@ -46,14 +55,21 @@ def extract_romance_bot_data(text):
     # Extract topics (e.g. 'Topics: topic1, topic2, ...')
     topics_match = re.search(r'Topics?:\s*([^\n]+)', text, re.IGNORECASE)
     topics = [t.strip() for t in topics_match.group(1).split(',')] if topics_match else []
-    # Extract steam level (markdown or plain)
-    steam_match = re.search(r'Steam\s*\[([^\]]+)\]\([^\)]+\)', text, re.IGNORECASE)
-    if steam_match:
-        steam = steam_match.group(1).strip()
+    # Extract steam level (markdown or plain, bolded or not)
+    steam = ''
+    steam_rating = ''
+    # Match **Steam**: [level](link) or Steam: [level](link)
+    steam_md = re.search(r'(?:\*\*|__)?Steam(?:\*\*|__)?\s*:\s*\[([^\]]+)\]\([^\)]+\)', text, re.IGNORECASE)
+    if steam_md:
+        steam = steam_md.group(1).strip()
     else:
-        steam_match = re.search(r'Steam:\s*([^\n]+)', text, re.IGNORECASE)
-        steam = steam_match.group(1).strip() if steam_match else ''
-    return romance_link, topics, steam
+        # Fallback: Steam: plain text
+        steam_plain = re.search(r'(?:\*\*|__)?Steam(?:\*\*|__)?\s*:\s*([^\n]+)', text, re.IGNORECASE)
+        if steam_plain:
+            steam = steam_plain.group(1).strip()
+    # Map to numeric rating
+    steam_rating = STEAM_LABEL_TO_NUM.get(steam, '')
+    return romance_link, topics, steam, steam_rating
 
 def handle_romance_bot_comment(comment, seen):
     reddit_created_utc = getattr(comment, 'created_utc', None)
@@ -77,7 +93,7 @@ def handle_romance_bot_comment(comment, seen):
         else:
             title, author = mention
             book_link = ''
-        romance_bot_link, romance_bot_topics, romance_bot_steam = extract_romance_bot_data(comment.body)
+        romance_bot_link, romance_bot_topics, romance_bot_steam, romance_bot_steam_rating = extract_romance_bot_data(comment.body)
         # Prefer the markdown book_link if present
         romance_io_url = book_link or romance_bot_link
         # Log comment data and missing fields
@@ -87,8 +103,8 @@ def handle_romance_bot_comment(comment, seen):
         if not romance_io_url: missing.append('romance_io_url')
         if not romance_bot_steam: missing.append('steam')
         if not romance_bot_topics: missing.append('tags')
-        comment_data_logger.info(f"Pulled: title='{title}', author='{author}', romance_io_url='{romance_io_url}', steam='{romance_bot_steam}', tags='{romance_bot_topics}', reddit_url='{reddit_url}'" + (f" | MISSING: {', '.join(missing)}" if missing else ""))
-        updated = update_csv_with_romance_bot(title, author, romance_io_url, romance_bot_topics, romance_bot_steam, reddit_url=reddit_url)
+        comment_data_logger.info(f"Pulled: title='{title}', author='{author}', romance_io_url='{romance_io_url}', steam='{romance_bot_steam}', tags='{romance_bot_topics}', steam_rating='{romance_bot_steam_rating}', reddit_url='{reddit_url}'" + (f" | MISSING: {', '.join(missing)}" if missing else ""))
+        updated = update_csv_with_romance_bot(title, author, romance_io_url, romance_bot_topics, romance_bot_steam, romance_bot_steam_rating, reddit_url=reddit_url)
         if not updated:
             # If not already in CSV, add as new
             romance_book = {
@@ -100,6 +116,7 @@ def handle_romance_bot_comment(comment, seen):
                 'romance_io_url': romance_io_url,
                 'google_books_url': '',
                 'steam': romance_bot_steam,
+                'steam_rating': romance_bot_steam_rating,
                 'reddit_created_utc': reddit_created_utc,
                 'reddit_created_date': reddit_created_date,
                 'reddit_url': reddit_url
@@ -110,5 +127,5 @@ def handle_romance_bot_comment(comment, seen):
             console.print(f"[ROMANCE-BOT] {title} by {author}")
             console.print(f"Tags: {', '.join(romance_bot_topics) if romance_bot_topics else 'None'}")
             console.print(f"Romance.io URL: {romance_io_url if romance_io_url else 'None'}")
-            console.print(f"Steam: {romance_bot_steam if romance_bot_steam else 'None'}")
+            console.print(f"Steam: {romance_bot_steam if romance_bot_steam else 'None'} (Rating: {romance_bot_steam_rating if romance_bot_steam_rating else 'N/A'})")
             console.print("-" * 60) 

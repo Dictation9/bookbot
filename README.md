@@ -34,6 +34,16 @@ Or simply double-click the "Book Bot" icon on your desktop (after installation).
 
 ## 🛠️ Installation
 
+### Quick Install (Raspberry Pi)
+
+Copy and paste this command into your Raspberry Pi terminal:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/Dictation9/bookbot/main/install.sh | bash
+```
+
+### Manual Installation
+
 Installation is handled by a single script. It will create a Python virtual environment, install all dependencies, and set up the necessary files.
 
 ```bash

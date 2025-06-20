@@ -12,7 +12,7 @@ import prawcore
 from bs4 import BeautifulSoup
 import datetime
 from handlers.romance_bot_handler import is_romance_bot, handle_romance_bot_comment
-from book_utils import extract_books, extract_romance_bot_data, update_csv_with_romance_bot, write_book_to_csv, activity_logger
+from book_utils import extract_books, update_csv_with_romance_bot, write_book_to_csv, activity_logger
 from handlers.curly_bracket_handler import is_curly_bracket_comment, handle_curly_bracket_comment
 from handlers.csv_double_check_handler import run_csv_double_check
 

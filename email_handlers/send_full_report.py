@@ -16,14 +16,21 @@ def send_full_report():
     config.read(config_path)
 
     # --- Define File Paths ---
-    # Construct absolute paths from the project root (assuming script is run from root)
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    files_to_send = [
-        os.path.join(project_root, "book_mentions.csv"),
-        os.path.join(project_root, "logs", "bot.log"),
-        os.path.join(project_root, "logs", "comment_data.log")
-    ]
     
+    # Start with the main CSV file
+    files_to_send = [os.path.join(project_root, "book_mentions.csv")]
+
+    # Add all files from the logs directory
+    logs_dir = os.path.join(project_root, "logs")
+    if os.path.isdir(logs_dir):
+        for filename in os.listdir(logs_dir):
+            file_path = os.path.join(logs_dir, filename)
+            if os.path.isfile(file_path):
+                files_to_send.append(file_path)
+    else:
+        print(f"⚠️  Logs directory not found at '{logs_dir}'.")
+
     # Filter out files that don't exist
     existing_files = [f for f in files_to_send if os.path.exists(f)]
 

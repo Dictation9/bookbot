@@ -1,6 +1,15 @@
 import re
 import datetime
+import logging
 from book_utils import extract_books, update_csv_with_romance_bot, write_book_to_csv, activity_logger
+
+# Set up a dedicated logger for comment data
+comment_data_logger = logging.getLogger("comment_data")
+comment_data_logger.setLevel(logging.INFO)
+comment_data_handler = logging.FileHandler("logs/comment_data.log")
+comment_data_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+if not comment_data_logger.hasHandlers():
+    comment_data_logger.addHandler(comment_data_handler)
 
 def is_romance_bot(comment):
     return getattr(comment, 'author', None) and str(comment.author).lower() == 'romance-bot'
@@ -47,6 +56,12 @@ def handle_romance_bot_comment(comment, seen):
     reddit_created_date = datetime.datetime.utcfromtimestamp(reddit_created_utc).isoformat() if reddit_created_utc else ''
     reddit_url = f"https://reddit.com{getattr(comment, 'permalink', '')}"
     print(f"[INFO] Processing romance-bot comment: {reddit_url}")
+    # Log the full raw Reddit API data for the comment
+    try:
+        comment_data_logger.info(f"[RAW COMMENT DATA] {getattr(comment, 'id', '')}: {getattr(comment, 'body', '')}")
+        comment_data_logger.info(f"[RAW COMMENT OBJECT] {getattr(comment, 'id', '')}: {vars(comment)}")
+    except Exception as e:
+        comment_data_logger.warning(f"[RAW COMMENT DATA] Could not log full comment object: {e}")
     # Try both curly-brace and markdown extraction
     comment_mentions = extract_books(comment.body)
     if not comment_mentions:
@@ -61,6 +76,14 @@ def handle_romance_bot_comment(comment, seen):
         romance_bot_link, romance_bot_topics, romance_bot_steam = extract_romance_bot_data(comment.body)
         # Prefer the markdown book_link if present
         romance_io_url = book_link or romance_bot_link
+        # Log comment data and missing fields
+        missing = []
+        if not title: missing.append('title')
+        if not author: missing.append('author')
+        if not romance_io_url: missing.append('romance_io_url')
+        if not romance_bot_steam: missing.append('steam')
+        if not romance_bot_topics: missing.append('tags')
+        comment_data_logger.info(f"Pulled: title='{title}', author='{author}', romance_io_url='{romance_io_url}', steam='{romance_bot_steam}', tags='{romance_bot_topics}', reddit_url='{reddit_url}'" + (f" | MISSING: {', '.join(missing)}" if missing else ""))
         updated = update_csv_with_romance_bot(title, author, romance_io_url, romance_bot_topics, romance_bot_steam, reddit_url=reddit_url)
         if not updated:
             # If not already in CSV, add as new

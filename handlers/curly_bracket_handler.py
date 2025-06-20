@@ -1,8 +1,17 @@
+import logging
 from book_utils import extract_books, write_book_to_csv, activity_logger, extract_romance_io_link
 from handlers.web_search.openlibrary_handler import enrich_with_openlibrary
 from handlers.web_search.googlebooks_handler import enrich_with_googlebooks
 from handlers.web_search.romanceio_handler import enrich_with_romanceio
 import datetime
+
+# Set up a dedicated logger for comment data (shared with romance-bot handler)
+comment_data_logger = logging.getLogger("comment_data")
+comment_data_logger.setLevel(logging.INFO)
+comment_data_handler = logging.FileHandler("logs/comment_data.log")
+comment_data_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+if not comment_data_logger.hasHandlers():
+    comment_data_logger.addHandler(comment_data_handler)
 
 def is_curly_bracket_comment(comment):
     # This handler is the fallback for any comment
@@ -14,11 +23,23 @@ def handle_curly_bracket_comment(comment, seen):
     reddit_created_date = datetime.datetime.utcfromtimestamp(reddit_created_utc).isoformat() if reddit_created_utc else ''
     romance_link = extract_romance_io_link(comment.body)
     reddit_url = f"https://reddit.com{getattr(comment, 'permalink', '')}"
+    # Log the full raw Reddit API data for the comment
+    try:
+        comment_data_logger.info(f"[RAW COMMENT DATA] {getattr(comment, 'id', '')}: {getattr(comment, 'body', '')}")
+        comment_data_logger.info(f"[RAW COMMENT OBJECT] {getattr(comment, 'id', '')}: {vars(comment)}")
+    except Exception as e:
+        comment_data_logger.warning(f"[RAW COMMENT DATA] Could not log full comment object: {e}")
     for title, author in comment_mentions:
         key = (title.lower(), author.lower())
         if key in seen:
             continue
         seen.add(key)
+        # Log comment data and missing fields
+        missing = []
+        if not title: missing.append('title')
+        if not author: missing.append('author')
+        if not romance_link: missing.append('romance_io_url')
+        comment_data_logger.info(f"Pulled: title='{title}', author='{author}', romance_io_url='{romance_link}', reddit_url='{reddit_url}'" + (f" | MISSING: {', '.join(missing)}" if missing else ""))
         book = enrich_with_openlibrary(title, author)
         if book:
             book['reddit_created_utc'] = reddit_created_utc

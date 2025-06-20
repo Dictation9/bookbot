@@ -1,6 +1,6 @@
 import re
 import datetime
-from bookbot import extract_books, extract_books_from_romance_bot, extract_romance_bot_data, update_csv_with_romance_bot, write_book_to_csv, activity_logger
+from book_utils import extract_books, extract_books_from_romance_bot, extract_romance_bot_data, update_csv_with_romance_bot, write_book_to_csv, activity_logger
 
 def is_romance_bot(comment):
     return getattr(comment, 'author', None) and str(comment.author).lower() == 'romance-bot'

@@ -12,6 +12,7 @@ import prawcore
 from bs4 import BeautifulSoup
 import datetime
 from romance_bot_handler import is_romance_bot, handle_romance_bot_comment
+from book_utils import extract_books, extract_books_from_romance_bot, extract_romance_bot_data, update_csv_with_romance_bot, write_book_to_csv, activity_logger
 
 # Set up error logging
 logging.basicConfig(filename="error.log", level=logging.ERROR,

@@ -30,6 +30,7 @@ def handle_romance_bot_comment(comment, seen):
     reddit_created_utc = getattr(comment, 'created_utc', None)
     reddit_created_date = datetime.datetime.utcfromtimestamp(reddit_created_utc).isoformat() if reddit_created_utc else ''
     reddit_url = f"https://reddit.com{getattr(comment, 'permalink', '')}"
+    print(f"[INFO] Processing romance-bot comment: {reddit_url}")
     # Try both curly-brace and markdown extraction
     comment_mentions = extract_books(comment.body)
     if not comment_mentions:
@@ -61,4 +62,10 @@ def handle_romance_bot_comment(comment, seen):
                 'reddit_url': reddit_url
             }
             write_book_to_csv(romance_book)
-            activity_logger.info(f"Added romance-bot book: {title} by {author}") 
+            activity_logger.info(f"Added romance-bot book: {title} by {author}")
+            print("-" * 60)
+            print(f"[ROMANCE-BOT] {title} by {author}")
+            print(f"Tags: {', '.join(romance_bot_topics) if romance_bot_topics else 'None'}")
+            print(f"Romance.io URL: {romance_io_url if romance_io_url else 'None'}")
+            print(f"Steam: {romance_bot_steam if romance_bot_steam else 'None'}")
+            print("-" * 60) 

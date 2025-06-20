@@ -1,7 +1,7 @@
 import csv
 import praw
 import datetime
-from book_utils import extract_books, extract_romance_bot_data, update_csv_with_romance_bot, write_book_to_csv, activity_logger
+from book_utils import extract_books, update_csv_with_romance_bot, write_book_to_csv, activity_logger
 from handlers.web_search.openlibrary_handler import enrich_with_openlibrary
 from handlers.web_search.googlebooks_handler import enrich_with_googlebooks
 from handlers.web_search.romanceio_handler import enrich_with_romanceio

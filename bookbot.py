@@ -4,6 +4,11 @@ import requests
 import praw
 import logging
 import os
+try:
+    import setproctitle
+    setproctitle.setproctitle("bookbot")
+except ImportError:
+    pass  # If not installed, just skip
 from rich.console import Console
 console = Console()
 from rich.table import Table

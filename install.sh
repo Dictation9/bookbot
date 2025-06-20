@@ -5,7 +5,7 @@ cd ~/bookbot
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-pip install praw rich prawcore beautifulsoup4
+pip install praw rich prawcore beautifulsoup4 setproctitle
 chmod +x run.sh cron_setup.sh bookbot.desktop manual_update.sh
 cp bookbot.desktop ~/Desktop/
 ./cron_setup.sh

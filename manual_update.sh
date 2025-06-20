@@ -8,6 +8,10 @@ fi
 
 git pull
 
+# Update Python requirements
+source venv/bin/activate
+pip install -r requirements.txt
+
 # Restore config.ini if it was overwritten
 if [ -f config.ini.bak ]; then
     mv config.ini.bak config.ini

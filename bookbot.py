@@ -5,6 +5,7 @@ import praw
 import logging
 import os
 from rich.console import Console
+console = Console()
 from rich.table import Table
 import csv
 import time
@@ -29,7 +30,8 @@ activity_logger.addHandler(activity_handler)
 # Load config
 config = configparser.ConfigParser()
 if not os.path.exists("config.ini"):
-    print("❌ config.ini is missing. Please create it from config.example.ini.")
+    console.print("❌ config.ini is missing. Please create it from config.example.ini.")
+    activity_logger.info("❌ config.ini is missing. Please create it from config.example.ini.")
     exit(1)
 config.read("config.ini")
 
@@ -210,9 +212,11 @@ def auto_update():
     if os.path.exists(repo_dir):
         try:
             subprocess.run(["git", "-C", repo_dir, "pull"], check=True)
-            print("🔄 Auto-update complete.")
+            console.print("🔄 Auto-update complete.")
+            activity_logger.info("🔄 Auto-update complete.")
         except subprocess.CalledProcessError:
-            print("⚠️ Auto-update failed. Please pull manually.")
+            console.print("⚠️ Auto-update failed. Please pull manually.")
+            activity_logger.info("⚠️ Auto-update failed. Please pull manually.")
 
 
 def send_test_email():
@@ -229,7 +233,8 @@ def send_test_email():
             server.starttls()
             server.login(EMAIL_FROM, EMAIL_PASSWORD)
             server.send_message(msg)
-        print("📧 Test email sent.")
+        console.print("📧 Test email sent.")
+        activity_logger.info("📧 Test email sent.")
     except Exception as e:
         print(f"❌ Failed to send test email: {e}")
 
@@ -313,22 +318,40 @@ def send_csv_report():
     msg = MIMEMultipart()
     msg["From"] = EMAIL_FROM
     msg["To"] = EMAIL_TO
-    msg["Subject"] = "📚 Book Bot - CSV Report"
-    msg.attach(MIMEText("Attached is your CSV export.", "plain"))
+    msg["Subject"] = "📚 Book Bot - CSV and Logs Report"
+    attachments = []
     csv_path = "book_mentions.csv"
+    botlog_path = os.path.join("logs", "bot.log")
+    commentlog_path = os.path.join("logs", "comment_data.log")
     if os.path.exists(csv_path):
         with open(csv_path, "rb") as f:
             part = MIMEApplication(f.read(), Name="book_mentions.csv")
             part["Content-Disposition"] = 'attachment; filename="book_mentions.csv"'
             msg.attach(part)
+            attachments.append("book_mentions.csv")
+    if os.path.exists(botlog_path):
+        with open(botlog_path, "rb") as f:
+            part = MIMEApplication(f.read(), Name="bot.log")
+            part["Content-Disposition"] = 'attachment; filename="bot.log"'
+            msg.attach(part)
+            attachments.append("bot.log")
+    if os.path.exists(commentlog_path):
+        with open(commentlog_path, "rb") as f:
+            part = MIMEApplication(f.read(), Name="comment_data.log")
+            part["Content-Disposition"] = 'attachment; filename="comment_data.log"'
+            msg.attach(part)
+            attachments.append("comment_data.log")
+    body = "Attached are your CSV export and logs: " + ", ".join(attachments) + "."
+    msg.attach(MIMEText(body, "plain"))
     try:
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
             server.login(EMAIL_FROM, EMAIL_PASSWORD)
             server.send_message(msg)
-        print("📧 CSV email sent.")
+        console.print("📧 CSV and logs email sent.")
+        activity_logger.info("📧 CSV and logs email sent.")
     except Exception as e:
-        print(f"❌ Failed to send CSV email: {e}")
+        print(f"❌ Failed to send CSV/logs email: {e}")
 
 def main():
     send_test_email()
@@ -341,6 +364,8 @@ def main():
         else:
             activity_logger.info("CSV deletion requested but book_mentions.csv does not exist.")
     activity_logger.info(f"Scanning r/{SUBREDDIT_NAME} for book mentions...")
+    console.print(f"[green]Scanning r/{SUBREDDIT_NAME} for book mentions...[/]\n")
+    activity_logger.info(f"Scanning r/{SUBREDDIT_NAME} for book mentions...\n")
     reddit = praw.Reddit(
         client_id=REDDIT_CLIENT_ID,
         client_secret=REDDIT_SECRET,
@@ -348,7 +373,6 @@ def main():
     )
     subreddit = reddit.subreddit(SUBREDDIT_NAME)
     seen = set()
-    console.print(f"[green]Scanning r/{SUBREDDIT_NAME} for book mentions...[/]\n")
     posts = subreddit.new(limit=POST_LIMIT) if POST_LIMIT else subreddit.new(limit=None)
     for post in posts:
         content = f"{post.title} {post.selftext}"
@@ -380,6 +404,7 @@ def main():
                 activity_logger.info(f"Found book mention on romance.io: {romance_book['title']} by {romance_book['author']}")
                 write_book_to_csv(romance_book)
                 console.print(f"[yellow]No data found on Open Library, but found on romance.io: {title} by {author}[/]")
+                activity_logger.info(f"No data found on Open Library, but found on romance.io: {title} by {author}")
             else:
                 google_book = lookup_google_books(title, author)
                 if google_book:
@@ -389,6 +414,7 @@ def main():
                     activity_logger.info(f"Found book mention on Google Books: {google_book['title']} by {google_book['author']}")
                     write_book_to_csv(google_book)
                     console.print(f"[yellow]No data found on Open Library or romance.io, but found on Google Books: {title} by {author}[/]")
+                    activity_logger.info(f"No data found on Open Library or romance.io, but found on Google Books: {title} by {author}")
                 else:
                     no_data_book = {
                         'title': title,
@@ -406,9 +432,11 @@ def main():
                     activity_logger.info(f"No data found for: {title} by {author}, adding to CSV anyway.")
                     write_book_to_csv(no_data_book)
                     console.print(f"[yellow]No data found for: {title} by {author}[/]")
+                    activity_logger.info(f"No data found for: {title} by {author}")
         process_comments(post, seen)
     activity_logger.info(f"✅ Book scan complete.")
     console.print(f"[cyan]✅ Book scan complete.[/]")
+    activity_logger.info("✅ Book scan complete.")
     # Double-check CSV if enabled
     if DOUBLE_CHECK_ON_RUN:
         activity_logger.info(f"Running CSV double-check in mode: {DOUBLE_CHECK_MODE}")

@@ -7,6 +7,7 @@ from book_utils import extract_books, update_csv_with_romance_bot, write_book_to
 from handlers.web_search.openlibrary_handler import enrich_with_openlibrary
 from handlers.web_search.googlebooks_handler import enrich_with_googlebooks
 from handlers.web_search.romanceio_handler import enrich_with_romanceio
+from rich.console import Console
 
 # Set up a dedicated logger for comment data (shared with other handlers)
 os.makedirs("logs", exist_ok=True)
@@ -16,6 +17,8 @@ comment_data_handler = logging.FileHandler("logs/comment_data.log")
 comment_data_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 if not comment_data_logger.hasHandlers():
     comment_data_logger.addHandler(comment_data_handler)
+
+console = Console()
 
 def is_entry_missing_data(row):
     # Define what counts as missing: no ISBN, no tags, no cover, etc.
@@ -30,7 +33,7 @@ def run_csv_double_check(mode='missing', csv_path='book_mentions.csv', praw_redd
     mode: 'missing' (only incomplete entries) or 'all' (every entry)
     praw_reddit: a praw.Reddit instance
     """
-    print(f"[INFO] Running CSV double-check (mode: {mode})...")
+    console.print(f"[INFO] Running CSV double-check (mode: {mode})...")
     if praw_reddit is None:
         raise ValueError("praw_reddit instance required")
     try:

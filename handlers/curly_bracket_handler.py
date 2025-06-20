@@ -5,6 +5,8 @@ from handlers.web_search.googlebooks_handler import enrich_with_googlebooks
 from handlers.web_search.romanceio_handler import enrich_with_romanceio
 import datetime
 import os
+from rich.console import Console
+console = Console()
 
 # Set up a dedicated logger for comment data (shared with romance-bot handler)
 os.makedirs("logs", exist_ok=True)

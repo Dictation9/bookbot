@@ -3,6 +3,8 @@ import datetime
 import logging
 import os
 from book_utils import extract_books, update_csv_with_romance_bot, write_book_to_csv, activity_logger
+from rich.console import Console
+console = Console()
 
 # Set up a dedicated logger for comment data
 os.makedirs("logs", exist_ok=True)
@@ -57,7 +59,7 @@ def handle_romance_bot_comment(comment, seen):
     reddit_created_utc = getattr(comment, 'created_utc', None)
     reddit_created_date = datetime.datetime.utcfromtimestamp(reddit_created_utc).isoformat() if reddit_created_utc else ''
     reddit_url = f"https://reddit.com{getattr(comment, 'permalink', '')}"
-    print(f"[INFO] Processing romance-bot comment: {reddit_url}")
+    console.print(f"[INFO] Processing romance-bot comment: {reddit_url}")
     # Log the full raw Reddit API data for the comment
     try:
         comment_data_logger.info(f"[RAW COMMENT DATA] {getattr(comment, 'id', '')}: {getattr(comment, 'body', '')}")
@@ -104,9 +106,9 @@ def handle_romance_bot_comment(comment, seen):
             }
             write_book_to_csv(romance_book)
             activity_logger.info(f"Added romance-bot book: {title} by {author}")
-            print("-" * 60)
-            print(f"[ROMANCE-BOT] {title} by {author}")
-            print(f"Tags: {', '.join(romance_bot_topics) if romance_bot_topics else 'None'}")
-            print(f"Romance.io URL: {romance_io_url if romance_io_url else 'None'}")
-            print(f"Steam: {romance_bot_steam if romance_bot_steam else 'None'}")
-            print("-" * 60) 
+            console.print("-" * 60)
+            console.print(f"[ROMANCE-BOT] {title} by {author}")
+            console.print(f"Tags: {', '.join(romance_bot_topics) if romance_bot_topics else 'None'}")
+            console.print(f"Romance.io URL: {romance_io_url if romance_io_url else 'None'}")
+            console.print(f"Steam: {romance_bot_steam if romance_bot_steam else 'None'}")
+            console.print("-" * 60) 

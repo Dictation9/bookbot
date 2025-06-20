@@ -409,12 +409,13 @@ def main():
         process_comments(post, seen)
     activity_logger.info(f"✅ Book scan complete.")
     console.print(f"[cyan]✅ Book scan complete.[/]")
-    if SEND_CSV_EMAIL:
-        send_csv_report()
     # Double-check CSV if enabled
     if DOUBLE_CHECK_ON_RUN:
         activity_logger.info(f"Running CSV double-check in mode: {DOUBLE_CHECK_MODE}")
         run_csv_double_check(mode=DOUBLE_CHECK_MODE, praw_reddit=reddit)
+    # Send CSV email after double-check (if enabled)
+    if SEND_CSV_EMAIL:
+        send_csv_report()
     # Pseudo-code for scheduled double-checks (daemon mode):
     # while True:
     #     now = datetime.datetime.now().strftime('%H:%M')

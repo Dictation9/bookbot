@@ -40,6 +40,7 @@ def update_csv_with_romance_bot(title, author, romance_io_url, topics, steam, cs
     key = (title.strip().lower(), author.strip().lower())
     updated = False
     rows = []
+    fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url', 'romance_io_url', 'google_books_url', 'steam', 'datetime_added', 'reddit_created_utc', 'reddit_created_date', 'reddit_url']
     try:
         with open(csv_path, newline='', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
@@ -55,15 +56,18 @@ def update_csv_with_romance_bot(title, author, romance_io_url, topics, steam, cs
                     if reddit_url:
                         row['reddit_url'] = reddit_url
                     updated = True
-                rows.append(row)
+                # Filter row to only fieldnames and no None keys
+                filtered_row = {k: v for k, v in row.items() if k in fieldnames and k is not None}
+                rows.append(filtered_row)
     except FileNotFoundError:
         return False
     if updated:
         with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
-            fieldnames = rows[0].keys()
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerows(rows)
+            for row in rows:
+                filtered_row = {k: v for k, v in row.items() if k in fieldnames and k is not None}
+                writer.writerow(filtered_row)
     return updated
 
 def write_book_to_csv(book, csv_path="book_mentions.csv"):

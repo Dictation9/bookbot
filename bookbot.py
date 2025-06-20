@@ -310,10 +310,13 @@ def process_comments(post, seen):
             # Curly-bracket handler as fallback
             if is_curly_bracket_comment(comment):
                 handle_curly_bracket_comment(comment, seen)
-    except prawcore.exceptions.RateLimitExceeded as e:
-        activity_logger.error(f"Rate limit exceeded while processing comments: {e}")
-        time.sleep(e.sleep_time + 1)
-        process_comments(post, seen)
+    except praw.exceptions.APIException as e:
+        if hasattr(e, 'error_type') and 'RATELIMIT' in str(e.error_type).upper():
+            activity_logger.error(f"Rate limit exceeded while processing comments: {e}")
+            time.sleep(60)  # Wait a minute before retrying
+            process_comments(post, seen)
+        else:
+            activity_logger.error(f"APIException while processing comments: {e}")
     except Exception as e:
         activity_logger.error(f"Error scanning comments for post {post.id}: {e}")
 

@@ -19,7 +19,7 @@ class DashboardTab:
         self.version_label = ctk.CTkLabel(inner, text="Version: ...", text_color="black")
         self.version_label.pack(pady=2)
         self.latest_version_label = ctk.CTkLabel(inner, text="Latest: ...", text_color="black")
-        self.latest_version_label.pack(pady=2)
+        self.latest_version_label.pack_forget()
         self.update_label = ctk.CTkLabel(inner, text="Update status: ...", text_color="black")
         self.update_label.pack(pady=2)
         btn_update_frame = ctk.CTkFrame(inner, fg_color="transparent")
@@ -59,23 +59,29 @@ class DashboardTab:
             subprocess.check_output(["git", "remote", "update"], cwd=os.path.dirname(os.path.dirname(__file__)))
             latest_version = subprocess.check_output(["git", "rev-parse", "--short", "origin/main"], cwd=os.path.dirname(os.path.dirname(__file__))).decode().strip()
             self.latest_version_label.configure(text=f"Latest: {latest_version}")
+            self.latest_version_label.pack_forget()  # Hide by default, show only if update available
         except Exception:
             self.latest_version_label.configure(text="Latest: unknown")
+            self.latest_version_label.pack_forget()
         # Check for updates
         try:
             status = subprocess.check_output(["git", "status", "-uno"], cwd=os.path.dirname(os.path.dirname(__file__))).decode()
             if "Your branch is behind" in status:
                 self.update_label.configure(text="Update status: Update available!", text_color="orange")
                 self.update_button.pack(pady=2)
+                self.latest_version_label.pack(pady=2)
             elif "Your branch is up to date" in status:
                 self.update_label.configure(text="Update status: Up to date", text_color="green")
                 self.update_button.pack_forget()
+                self.latest_version_label.pack_forget()
             else:
                 self.update_label.configure(text="Update status: Unknown", text_color="gray")
                 self.update_button.pack_forget()
+                self.latest_version_label.pack_forget()
         except Exception:
             self.update_label.configure(text="Update status: unknown", text_color="gray")
             self.update_button.pack_forget()
+            self.latest_version_label.pack_forget()
     def start_scan(self):
         if self.scan_thread and self.scan_thread.is_alive():
             return

@@ -77,11 +77,18 @@ class BookBotGUI(ctk.CTk):
             btn.configure(fg_color=("gray75", "gray25") if btn.cget("text") == name else "transparent")
 
         # Show the selected frame
-        for i, frame in enumerate(self.plugin_frames):
-            if i == idx:
-                frame.grid(row=0, column=1, sticky="nsew")
-            else:
-                frame.grid_forget()
+        idx = None
+        if name.startswith("plugin_"):
+            try:
+                idx = int(name.split("_")[1])
+            except Exception:
+                idx = None
+        if idx is not None:
+            for i, frame in enumerate(self.plugin_frames):
+                if i == idx:
+                    frame.grid(row=0, column=1, sticky="nsew")
+                else:
+                    frame.grid_forget()
 
     def start_scan(self):
         if self.scan_thread and self.scan_thread.is_alive():

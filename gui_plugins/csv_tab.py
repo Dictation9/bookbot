@@ -50,11 +50,14 @@ class CSVTab:
             self.entries.append(row_entries)
         # Place Save/Reload buttons at the next available row
         btn_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
-        btn_frame.grid(row=len(rows)+1, column=0, columnspan=len(self.header), pady=10, sticky="w")
+        btn_frame.grid(row=len(rows)+1, column=0, columnspan=len(self.header) if self.header else 1, pady=10, sticky="w")
         self.save_button = ctk.CTkButton(btn_frame, text="Save Changes", command=self.save_csv, text_color="black")
         self.save_button.pack(side="left", padx=10)
         self.reload_button = ctk.CTkButton(btn_frame, text="Reload", command=self.reload_csv, text_color="black")
         self.reload_button.pack(side="left", padx=10)
+        
+        self.status_label = ctk.CTkLabel(self.inner, text="", text_color="green")
+        self.status_label.grid(row=len(rows)+2, column=0, columnspan=len(self.header) if self.header else 1, pady=(0, 10), sticky="w")
     def save_csv(self):
         # Gather data from entries
         data = [self.header]
@@ -63,5 +66,9 @@ class CSVTab:
         with open(CSV_PATH, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerows(data)
+
+        # Show confirmation
+        self.status_label.configure(text="Saved successfully!")
+        self.status_label.after(3000, lambda: self.status_label.configure(text=""))
     def reload_csv(self):
         self.load_csv() 

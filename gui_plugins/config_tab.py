@@ -94,6 +94,9 @@ class ConfigTab:
         self.save_button.pack(side="left", padx=10)
         self.reload_button = ctk.CTkButton(btn_frame, text="Reload", command=self.reload_config, text_color="black")
         self.reload_button.pack(side="left", padx=10)
+
+        self.status_label = ctk.CTkLabel(self.inner, text="", text_color="green")
+        self.status_label.grid(row=row+1, column=0, columnspan=2, pady=(0, 10), sticky="w")
     def save_config(self):
         config = configparser.ConfigParser()
         config.read(CONFIG_PATH)
@@ -103,5 +106,9 @@ class ConfigTab:
             config[section][option] = entry.get()
         with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
             config.write(f)
+        
+        # Show confirmation
+        self.status_label.configure(text="Saved successfully!")
+        self.status_label.after(3000, lambda: self.status_label.configure(text=""))
     def reload_config(self):
         self.load_config() 

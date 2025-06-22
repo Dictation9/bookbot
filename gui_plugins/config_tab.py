@@ -44,29 +44,28 @@ class ConfigTab:
         # Parse config.ini for comments and map them to (section, option)
         hints = {}
         current_section = None
-        last_comments = []
+        comment_buffer = []
         with open(CONFIG_PATH, encoding="utf-8") as f:
             for line in f:
+                raw_line = line
                 line = line.strip()
                 if not line:
+                    comment_buffer = []  # Reset buffer on blank line
                     continue
                 if line.startswith("[") and "]" in line:
-                    # Support inline section comments
-                    if "#" in line:
-                        section_part, comment_part = line.split("#", 1)
-                        current_section = section_part.strip("[] ")
-                        last_comments = [comment_part.strip()]
-                    else:
-                        current_section = line[1:line.index("]")]
-                        last_comments = []
-                elif line.startswith("#"):
-                    last_comments.append(line[1:].strip())
-                elif "=" in line and current_section:
+                    # Section header
+                    current_section = line[1:line.index("]")]
+                    comment_buffer = []  # Reset buffer on section
+                    continue
+                if line.startswith("#"):
+                    comment_buffer.append(line[1:].strip())
+                    continue
+                if "=" in line and current_section:
                     option = line.split("=", 1)[0].strip()
-                    if last_comments:
-                        hint = " ".join(last_comments)
+                    if comment_buffer:
+                        hint = " ".join(comment_buffer)
                         hints[(current_section, option)] = hint
-                        last_comments = []
+                    comment_buffer = []  # Only use comments immediately above
         return hints
     def load_config(self):
         # Clear previous widgets

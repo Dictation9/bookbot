@@ -18,6 +18,8 @@ class DashboardTab:
         # Version and update info
         self.version_label = ctk.CTkLabel(inner, text="Version: ...", text_color="black")
         self.version_label.pack(pady=2)
+        self.last_updated_label = ctk.CTkLabel(inner, text="Last updated: ...", text_color="black")
+        self.last_updated_label.pack(pady=2)
         self.latest_version_label = ctk.CTkLabel(inner, text="Latest: ...", text_color="black")
         self.latest_version_label.pack_forget()
         self.update_label = ctk.CTkLabel(inner, text="Update status: ...", text_color="black")
@@ -51,8 +53,14 @@ class DashboardTab:
         try:
             version = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=os.path.dirname(os.path.dirname(__file__))).decode().strip()
             self.version_label.configure(text=f"Version: {version}")
+            # Get last commit date/time
+            commit_time = subprocess.check_output([
+                "git", "show", "-s", "--format=%cd", "--date=iso", "HEAD"
+            ], cwd=os.path.dirname(os.path.dirname(__file__))).decode().strip()
+            self.last_updated_label.configure(text=f"Last updated: {commit_time}")
         except Exception:
             self.version_label.configure(text="Version: unknown")
+            self.last_updated_label.configure(text="Last updated: unknown")
         # Get latest remote commit hash
         latest_version = None
         try:

@@ -13,7 +13,7 @@ def get_tab(parent):
 
 class CSVTab:
     def __init__(self, parent):
-        self.frame = ScrollableFrame(parent, always_show_scrollbar=True)
+        self.frame = ScrollableFrame(parent, always_show_scrollbar=True, show_horizontal_scrollbar=True)
         self.inner = self.frame.inner
         self.entries = []
         self.header = []

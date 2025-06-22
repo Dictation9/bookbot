@@ -37,13 +37,14 @@ class AdminTab:
         threading.Thread(target=do_update, daemon=True).start()
 
     def confirm_reinstall(self):
-        confirm = ctk.CTkToplevel(self.frame)
-        confirm.title("Confirm Reinstall")
-        ctk.CTkLabel(confirm, text="Are you sure you want to reinstall? This will DELETE ALL FILES (except .git) and reinstall from GitHub. This cannot be undone!", wraplength=400, text_color="red").pack(padx=20, pady=20)
-        btn_frame = ctk.CTkFrame(confirm, fg_color="transparent")
+        self.confirm_dialog = ctk.CTkToplevel(self.frame)
+        self.confirm_dialog.title("Confirm Reinstall")
+        self.confirm_dialog.grab_set()  # Make modal
+        ctk.CTkLabel(self.confirm_dialog, text="Are you sure you want to reinstall? This will DELETE ALL FILES (except .git) and reinstall from GitHub. This cannot be undone!", wraplength=400, text_color="red").pack(padx=20, pady=20)
+        btn_frame = ctk.CTkFrame(self.confirm_dialog, fg_color="transparent")
         btn_frame.pack(pady=10)
-        ctk.CTkButton(btn_frame, text="Cancel", command=confirm.destroy, text_color="black").pack(side="left", padx=10)
-        ctk.CTkButton(btn_frame, text="Reinstall", command=lambda: self.reinstall_app(confirm), text_color="white", fg_color="red").pack(side="left", padx=10)
+        ctk.CTkButton(btn_frame, text="Cancel", command=self.confirm_dialog.destroy, text_color="black").pack(side="left", padx=10)
+        ctk.CTkButton(btn_frame, text="Reinstall", command=lambda: self.reinstall_app(self.confirm_dialog), text_color="white", fg_color="red").pack(side="left", padx=10)
 
     def reinstall_app(self, dialog):
         dialog.destroy()

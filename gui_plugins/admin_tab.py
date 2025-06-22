@@ -20,7 +20,9 @@ class AdminTab:
         self.status_label.pack(pady=5)
         self.update_button = ctk.CTkButton(inner, text="Manual Update", command=self.run_update, text_color="black")
         self.update_button.pack(pady=10)
-        self.reinstall_button = ctk.CTkButton(inner, text="Reinstall App", command=self.confirm_reinstall, text_color="black")
+        reinstall_warning = "WARNING: Reinstalling will DELETE ALL local files (except .git) and restore the app from GitHub. This cannot be undone."
+        ctk.CTkLabel(inner, text=reinstall_warning, wraplength=400, text_color="red", font=ctk.CTkFont(weight="bold")).pack(padx=20, pady=(20, 5))
+        self.reinstall_button = ctk.CTkButton(inner, text="Reinstall App", command=self.reinstall_app, text_color="white", fg_color="red")
         self.reinstall_button.pack(pady=10)
     def run_update(self):
         def do_update():
@@ -37,28 +39,11 @@ class AdminTab:
             os.execv(sys.executable, [sys.executable] + sys.argv)
         threading.Thread(target=do_update, daemon=True).start()
 
-    def confirm_reinstall(self):
-        self.confirm_dialog = tk.Toplevel(self.frame)
-        self.confirm_dialog.title("Confirm Reinstall")
-        self.confirm_dialog.grab_set()  # Make modal
-        self.confirm_dialog.geometry("450x200")
-        self.confirm_dialog.minsize(400, 180)
-        self.confirm_dialog.lift()
-        label = ctk.CTkLabel(self.confirm_dialog, text="Are you sure you want to reinstall? This will DELETE ALL FILES (except .git) and reinstall from GitHub. This cannot be undone!", wraplength=400, text_color="red")
-        label.pack(padx=20, pady=20)
-        btn_frame = ctk.CTkFrame(self.confirm_dialog, fg_color="transparent")
-        btn_frame.pack(pady=10)
-        ctk.CTkButton(btn_frame, text="Cancel", command=self.confirm_dialog.destroy, text_color="black").pack(side="left", padx=10)
-        ctk.CTkButton(btn_frame, text="Reinstall", command=lambda: self.reinstall_app(self.confirm_dialog), text_color="white", fg_color="red").pack(side="left", padx=10)
-        self.confirm_dialog.update_idletasks()
-
-    def reinstall_app(self, dialog):
-        dialog.destroy()
+    def reinstall_app(self):
         def do_reinstall():
             self.reinstall_button.configure(state="disabled", text="Reinstalling...")
             self.status_label.configure(text="Deleting all files except .git...")
             app_dir = os.path.dirname(os.path.dirname(__file__))
-            # WARNING: The following is a simulation. Uncomment to enable real deletion.
             for item in os.listdir(app_dir):
                 if item in ['.git', '.', '..']:
                     continue

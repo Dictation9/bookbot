@@ -19,7 +19,7 @@ class CSVTab:
         self.header = []
         self.load_csv()
         btn_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
-        btn_frame.pack(pady=10)
+        btn_frame.grid(row=9999, column=0, columnspan=len(self.header), pady=10, sticky="w")
         self.save_button = ctk.CTkButton(btn_frame, text="Save Changes", command=self.save_csv, text_color="black")
         self.save_button.pack(side="left", padx=10)
         self.reload_button = ctk.CTkButton(btn_frame, text="Reload", command=self.reload_csv, text_color="black")
@@ -66,7 +66,7 @@ class CSVTab:
         self.load_csv()
         # Re-add buttons
         btn_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
-        btn_frame.pack(pady=10)
+        btn_frame.grid(row=9999, column=0, columnspan=len(self.header), pady=10, sticky="w")
         self.save_button = ctk.CTkButton(btn_frame, text="Save Changes", command=self.save_csv, text_color="black")
         self.save_button.pack(side="left", padx=10)
         self.reload_button = ctk.CTkButton(btn_frame, text="Reload", command=self.reload_csv, text_color="black")

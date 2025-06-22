@@ -16,7 +16,7 @@ class ConfigTab:
         self.entries = {}  # (section, option): entry
         self.load_config()
         btn_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
-        btn_frame.pack(pady=10)
+        btn_frame.grid(row=9999, column=0, columnspan=2, pady=10, sticky="w")
         self.save_button = ctk.CTkButton(btn_frame, text="Save Changes", command=self.save_config, text_color="black")
         self.save_button.pack(side="left", padx=10)
         self.reload_button = ctk.CTkButton(btn_frame, text="Reload", command=self.reload_config, text_color="black")
@@ -51,7 +51,7 @@ class ConfigTab:
     def reload_config(self):
         self.load_config()
         btn_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
-        btn_frame.pack(pady=10)
+        btn_frame.grid(row=9999, column=0, columnspan=2, pady=10, sticky="w")
         self.save_button = ctk.CTkButton(btn_frame, text="Save Changes", command=self.save_config, text_color="black")
         self.save_button.pack(side="left", padx=10)
         self.reload_button = ctk.CTkButton(btn_frame, text="Reload", command=self.reload_config, text_color="black")

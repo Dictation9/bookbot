@@ -128,6 +128,8 @@ class DashboardTab:
                 self.append_log(f"Update failed: {e}")
             self.update_button.configure(state="normal", text="Update Now")
             self.refresh_version_and_update()
+            # Relaunch the GUI after update
+            os.execv(sys.executable, [sys.executable] + sys.argv)
         threading.Thread(target=do_update, daemon=True).start()
 
 def get_tab(parent):

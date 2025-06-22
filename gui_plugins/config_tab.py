@@ -9,12 +9,58 @@ CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.i
 def get_tab(parent):
     return {"name": "Configuration", "frame": ConfigTab(parent).frame, "top_level": True, "position": 2}
 
+class ToolTip:
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tipwindow = None
+        widget.bind("<Enter>", self.show_tip)
+        widget.bind("<Leave>", self.hide_tip)
+    def show_tip(self, event=None):
+        if self.tipwindow or not self.text:
+            return
+        x, y, cx, cy = self.widget.bbox("insert")
+        x = x + self.widget.winfo_rootx() + 25
+        y = y + self.widget.winfo_rooty() + 20
+        self.tipwindow = tw = ctk.CTkToplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        label = ctk.CTkLabel(tw, text=self.text, text_color="black", fg_color="white", corner_radius=5, font=ctk.CTkFont(size=12))
+        label.pack(ipadx=6, ipady=2)
+    def hide_tip(self, event=None):
+        tw = self.tipwindow
+        self.tipwindow = None
+        if tw:
+            tw.destroy()
+
 class ConfigTab:
     def __init__(self, parent):
         self.frame = ScrollableFrame(parent, always_show_scrollbar=True)
         self.inner = self.frame.inner
         self.entries = {}  # (section, option): entry
+        self.hints = self.parse_hints()
         self.load_config()
+    def parse_hints(self):
+        # Parse config.ini for comments and map them to (section, option)
+        hints = {}
+        current_section = None
+        last_comment = None
+        with open(CONFIG_PATH, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                if line.startswith("[") and line.endswith("]"):
+                    current_section = line[1:-1]
+                    last_comment = None
+                elif line.startswith("#"):
+                    last_comment = line[1:].strip()
+                elif "=" in line and current_section:
+                    option = line.split("=", 1)[0].strip()
+                    if last_comment:
+                        hints[(current_section, option)] = last_comment
+                        last_comment = None
+        return hints
     def load_config(self):
         # Clear previous widgets
         for widget in self.inner.winfo_children():
@@ -31,6 +77,8 @@ class ConfigTab:
                 entry = ctk.CTkEntry(self.inner, width=400)
                 entry.insert(0, config[section][option])
                 entry.grid(row=row, column=1, sticky="w", padx=5, pady=2)
+                hint = self.hints.get((section, option), "Fill in this value if unsure. Hover for more info.")
+                ToolTip(entry, hint)
                 self.entries[(section, option)] = entry
                 row += 1
         # Place Save/Reload buttons at the next available row

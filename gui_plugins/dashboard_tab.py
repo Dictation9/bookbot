@@ -169,4 +169,4 @@ class DashboardTab:
 
 def get_tab(parent):
     tab = DashboardTab(parent)
-    return {"name": "Dashboard", "frame": tab.frame, "top_level": True} 
+    return {"name": "Dashboard", "frame": tab.frame, "top_level": True, "position": 1} 

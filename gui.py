@@ -67,10 +67,13 @@ class BookBotGUI(ctk.CTk):
         self.top_level_frames = []
         self.plugin_frames = []
         for tab in all_tabs:
+            tab.setdefault('position', 100)
             if tab.get('top_level', False):
                 self.top_level_tabs.append(tab)
             else:
                 self.plugin_tabs.append(tab)
+        self.top_level_tabs.sort(key=lambda t: t['position'])
+        self.plugin_tabs.sort(key=lambda t: t['position'])
         # Add top-level nav buttons
         for i, tab in enumerate(self.top_level_tabs):
             btn = ctk.CTkButton(self.nav_frame, text=tab['name'], command=lambda idx=i: self.top_level_frame_event(idx), text_color="black")

@@ -1,0 +1,20 @@
+import customtkinter as ctk
+
+class ScrollableFrame(ctk.CTkFrame):
+    def __init__(self, parent, width=800, height=600, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.canvas = ctk.CTkCanvas(self, width=width, height=height, borderwidth=0, highlightthickness=0)
+        self.scrollbar = ctk.CTkScrollbar(self, orientation="vertical", command=self.canvas.yview)
+        self.inner = ctk.CTkFrame(self.canvas)
+        self.inner.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+        self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+        # Mousewheel scrolling
+        self.inner.bind_all("<MouseWheel>", self._on_mousewheel)
+    def _on_mousewheel(self, event):
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units") 

@@ -44,22 +44,29 @@ class ConfigTab:
         # Parse config.ini for comments and map them to (section, option)
         hints = {}
         current_section = None
-        last_comment = None
+        last_comments = []
         with open(CONFIG_PATH, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
                     continue
-                if line.startswith("[") and line.endswith("]"):
-                    current_section = line[1:-1]
-                    last_comment = None
+                if line.startswith("[") and "]" in line:
+                    # Support inline section comments
+                    if "#" in line:
+                        section_part, comment_part = line.split("#", 1)
+                        current_section = section_part.strip("[] ")
+                        last_comments = [comment_part.strip()]
+                    else:
+                        current_section = line[1:line.index("]")]
+                        last_comments = []
                 elif line.startswith("#"):
-                    last_comment = line[1:].strip()
+                    last_comments.append(line[1:].strip())
                 elif "=" in line and current_section:
                     option = line.split("=", 1)[0].strip()
-                    if last_comment:
-                        hints[(current_section, option)] = last_comment
-                        last_comment = None
+                    if last_comments:
+                        hint = " ".join(last_comments)
+                        hints[(current_section, option)] = hint
+                        last_comments = []
         return hints
     def load_config(self):
         # Clear previous widgets

@@ -11,7 +11,8 @@ def get_tab(parent):
 
 class LogTab:
     def __init__(self, parent):
-        self.frame = ScrollableFrame(parent, width=900, height=700, always_show_scrollbar=True)
+        self.frame = ScrollableFrame(parent, always_show_scrollbar=True)
+        self.frame.pack(fill='both', expand=True)
         self.inner = self.frame.inner
         self.log_files = self.get_log_files()
         self.selected_log = ctk.StringVar(value=self.log_files[0] if self.log_files else "")

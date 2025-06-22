@@ -40,6 +40,9 @@ class AdminTab:
         self.confirm_dialog = ctk.CTkToplevel(self.frame)
         self.confirm_dialog.title("Confirm Reinstall")
         self.confirm_dialog.grab_set()  # Make modal
+        self.confirm_dialog.geometry("450x200")
+        self.confirm_dialog.minsize(400, 180)
+        self.confirm_dialog.lift()
         ctk.CTkLabel(self.confirm_dialog, text="Are you sure you want to reinstall? This will DELETE ALL FILES (except .git) and reinstall from GitHub. This cannot be undone!", wraplength=400, text_color="red").pack(padx=20, pady=20)
         btn_frame = ctk.CTkFrame(self.confirm_dialog, fg_color="transparent")
         btn_frame.pack(pady=10)

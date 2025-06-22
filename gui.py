@@ -55,40 +55,79 @@ class BookBotGUI(ctk.CTk):
             return tabs
         # Load core plugins
         plugins_dir = os.path.join(os.path.dirname(__file__), 'gui_plugins')
-        self.plugin_tabs = load_from_dir(plugins_dir)
+        all_tabs = load_from_dir(plugins_dir)
         # Load user plugins
         user_plugins_dir = os.path.join(plugins_dir, 'user_plugins')
-        self.plugin_tabs += load_from_dir(user_plugins_dir)
+        all_tabs += load_from_dir(user_plugins_dir)
+        # Separate top-level and plugin tabs
+        self.top_level_tabs = []
+        self.plugin_tabs = []
+        self.top_level_buttons = []
+        self.plugin_buttons = []
+        self.top_level_frames = []
+        self.plugin_frames = []
+        for tab in all_tabs:
+            if tab.get('top_level', False):
+                self.top_level_tabs.append(tab)
+            else:
+                self.plugin_tabs.append(tab)
+        # Add top-level nav buttons
+        for i, tab in enumerate(self.top_level_tabs):
+            btn = ctk.CTkButton(self.nav_frame, text=tab['name'], command=lambda idx=i: self.top_level_frame_event(idx), text_color="black")
+            btn.grid(row=1+i, column=0, padx=20, pady=10)
+            self.top_level_buttons.append(btn)
+            self.top_level_frames.append(tab['frame'])
         # Add plugin buttons to nav if any plugins found
         if self.plugin_tabs:
-            ctk.CTkLabel(self.nav_frame, text="Plugins", font=ctk.CTkFont(size=15, weight="bold"), text_color="black").grid(row=6, column=0, padx=20, pady=(30, 5), sticky="w")
+            ctk.CTkLabel(self.nav_frame, text="Plugins", font=ctk.CTkFont(size=15, weight="bold"), text_color="black").grid(row=1+len(self.top_level_tabs), column=0, padx=20, pady=(30, 5), sticky="w")
             for i, tab in enumerate(self.plugin_tabs):
                 btn = ctk.CTkButton(self.nav_frame, text=tab['name'], command=lambda idx=i: self.plugin_frame_event(idx), text_color="black")
-                btn.grid(row=7+i, column=0, padx=20, pady=5)
+                btn.grid(row=2+len(self.top_level_tabs)+i, column=0, padx=20, pady=5)
                 self.plugin_buttons.append(btn)
                 self.plugin_frames.append(tab['frame'])
+
+        # Select the first top-level tab by default if any, else first plugin tab
+        if self.top_level_tabs:
+            self.select_frame_by_name("top_0")
+        elif self.plugin_tabs:
+            self.select_frame_by_name("plugin_0")
+
+    def top_level_frame_event(self, idx):
+        self.select_frame_by_name(f"top_{idx}")
 
     def plugin_frame_event(self, idx):
         self.select_frame_by_name(f"plugin_{idx}")
 
     def select_frame_by_name(self, name):
         # Set button colors
-        for btn in self.plugin_buttons:
-            btn.configure(fg_color=("gray75", "gray25") if btn.cget("text") == name else "transparent")
-
+        for i, btn in enumerate(self.top_level_buttons):
+            btn.configure(fg_color=("gray75", "gray25") if name == f"top_{i}" else "transparent")
+        for i, btn in enumerate(self.plugin_buttons):
+            btn.configure(fg_color=("gray75", "gray25") if name == f"plugin_{i}" else "transparent")
         # Show the selected frame
         idx = None
-        if name.startswith("plugin_"):
+        if name.startswith("top_"):
             try:
                 idx = int(name.split("_")[1])
             except Exception:
                 idx = None
-        if idx is not None:
-            for i, frame in enumerate(self.plugin_frames):
-                if i == idx:
-                    frame.grid(row=0, column=1, sticky="nsew")
-                else:
-                    frame.grid_forget()
+            if idx is not None:
+                for i, frame in enumerate(self.top_level_frames):
+                    if i == idx:
+                        frame.grid(row=0, column=1, sticky="nsew")
+                    else:
+                        frame.grid_forget()
+        elif name.startswith("plugin_"):
+            try:
+                idx = int(name.split("_")[1])
+            except Exception:
+                idx = None
+            if idx is not None:
+                for i, frame in enumerate(self.plugin_frames):
+                    if i == idx:
+                        frame.grid(row=0, column=1, sticky="nsew")
+                    else:
+                        frame.grid_forget()
 
     def start_scan(self):
         if self.scan_thread and self.scan_thread.is_alive():

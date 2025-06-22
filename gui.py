@@ -10,7 +10,7 @@ class BookBotGUI(ctk.CTk):
         super().__init__()
 
         self.title("Book Bot Control Panel")
-        self.geometry("1024x768")
+        self.geometry("500x500")
 
         # Set up the main grid layout
         self.grid_rowconfigure(0, weight=1)

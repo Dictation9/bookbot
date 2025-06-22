@@ -53,9 +53,6 @@ class DashboardTab:
         self.save_button.pack(side="left", padx=10)
         self.right_button = ctk.CTkButton(self.nav_frame, text="→", width=40, command=self.next_book, text_color="black")
         self.right_button.pack(side="left", padx=5)
-        self.book_frame.pack_forget()
-        self.nav_frame.pack_forget()
-        self.total_books_label.pack_forget()
         # Log output
         self.log_label = ctk.CTkLabel(self.frame, text="Live Log Output:", text_color="black", font=ctk.CTkFont(size=13, weight="bold"))
         self.log_label.pack(pady=(15, 0))

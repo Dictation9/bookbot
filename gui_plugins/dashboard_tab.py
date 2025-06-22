@@ -10,7 +10,7 @@ from gui_plugins.scrollable_frame import ScrollableFrame
 
 class DashboardTab:
     def __init__(self, parent):
-        self.frame = ScrollableFrame(parent, width=900, height=700)
+        self.frame = ScrollableFrame(parent, width=900, height=700, always_show_scrollbar=True)
         inner = self.frame.inner
         # Status and scan controls
         self.status_label = ctk.CTkLabel(inner, text="Status: Idle", text_color="black", font=ctk.CTkFont(size=14, weight="bold"))

@@ -11,7 +11,7 @@ def get_tab(parent):
 
 class ConfigTab:
     def __init__(self, parent):
-        self.frame = ScrollableFrame(parent, width=900, height=700)
+        self.frame = ScrollableFrame(parent, width=900, height=700, always_show_scrollbar=True)
         self.inner = self.frame.inner
         self.entries = {}  # (section, option): entry
         self.load_config()

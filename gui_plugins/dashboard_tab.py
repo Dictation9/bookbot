@@ -4,6 +4,8 @@ import time
 import datetime
 import subprocess
 import os
+import sys
+import signal
 
 class DashboardTab:
     def __init__(self, parent):
@@ -69,7 +71,7 @@ class DashboardTab:
         self.log_textbox.pack(pady=5)
         self.log_textbox.configure(state="disabled")
         self.scan_thread = None
-        self.stop_event = threading.Event()
+        self.bot_process = None
         self.refresh_version_and_update()
     def refresh_version_and_update(self):
         # Get git commit hash
@@ -99,47 +101,41 @@ class DashboardTab:
         self.log_textbox.configure(state="normal")
         self.log_textbox.delete("1.0", "end")
         self.log_textbox.configure(state="disabled")
-        self.stop_event.clear()
-        self.books = []
-        self.current_book_index = 0
-        self.hide_book_area()
-        self.scan_thread = threading.Thread(target=self.simulate_scan, daemon=True)
+        self.scan_thread = threading.Thread(target=self.run_bot_subprocess, daemon=True)
         self.scan_thread.start()
     def stop_scan(self):
-        if self.scan_thread and self.scan_thread.is_alive():
-            self.stop_event.set()
-            self.status_label.configure(text="Status: Stopping...", text_color="orange")
-    def simulate_scan(self):
-        fake_books = [
-            {"title": "Red, White & Royal Blue", "author": "Casey McQuiston", "link": "https://www.romance.io/books/abc", "tags": ["LGBTQ", "Romance"], "steam": "Open Door"},
-            {"title": "The Song of Achilles", "author": "Madeline Miller", "link": "https://openlibrary.org/works/OL12345W", "tags": ["Mythology", "Romance"], "steam": "Closed Door"},
-            {"title": "Boyfriend Material", "author": "Alexis Hall", "link": "https://www.romance.io/books/def", "tags": ["Comedy", "Romance"], "steam": "Open Door"},
-            {"title": "Cemetery Boys", "author": "Aiden Thomas", "link": "https://openlibrary.org/works/OL67890W", "tags": ["Paranormal", "LGBTQ"], "steam": "Fade to Black"},
-            {"title": "Heartstopper", "author": "Alice Oseman", "link": "https://www.romance.io/books/ghi", "tags": ["Graphic Novel", "YA"], "steam": "No Steam"},
-            {"title": "The House in the Cerulean Sea", "author": "TJ Klune", "link": "https://openlibrary.org/works/OL54321W", "tags": ["Fantasy", "Found Family"], "steam": "Closed Door"},
-            {"title": "One Last Stop", "author": "Casey McQuiston", "link": "https://www.romance.io/books/jkl", "tags": ["Time Travel", "Romance"], "steam": "Open Door"},
-            {"title": "Simon vs. the Homo Sapiens Agenda", "author": "Becky Albertalli", "link": "https://openlibrary.org/works/OL13579W", "tags": ["YA", "Coming of Age"], "steam": "No Steam"},
-            {"title": "Aristotle and Dante Discover the Secrets of the Universe", "author": "Benjamin Alire Sáenz", "link": "https://www.romance.io/books/mno", "tags": ["YA", "Romance"], "steam": "Fade to Black"},
-            {"title": "They Both Die at the End", "author": "Adam Silvera", "link": "https://openlibrary.org/works/OL24680W", "tags": ["Drama", "LGBTQ"], "steam": "No Steam"},
-        ]
-        for i, book in enumerate(fake_books):
-            if self.stop_event.is_set():
-                self.append_log("Scan stopped by user.")
-                self.status_label.configure(text="Status: Stopped", text_color="red")
-                self.run_button.configure(state="normal")
-                self.stop_button.configure(state="disabled")
-                self.hide_book_area()
-                return
-            time.sleep(0.4)
-            self.append_log(f"Processed: {book['title']}")
-            self.books.append(book)
-            self.update_book_area()
-        self.status_label.configure(text="Status: Complete", text_color="blue")
-        self.last_scan_label.configure(text=f"Last Scan: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        self.run_button.configure(state="normal")
-        self.stop_button.configure(state="disabled")
-        self.append_log("Scan finished successfully.")
-        self.update_book_area()
+        if self.bot_process and self.bot_process.poll() is None:
+            try:
+                self.status_label.configure(text="Status: Stopping...", text_color="orange")
+                self.bot_process.send_signal(signal.SIGINT)
+            except Exception as e:
+                self.append_log(f"Error stopping bot: {e}")
+    def run_bot_subprocess(self):
+        # Run the bot as a subprocess and stream output to the log
+        bot_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "bookbot.py")
+        self.bot_process = subprocess.Popen(
+            [sys.executable, bot_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            cwd=os.path.dirname(os.path.dirname(__file__)),
+            text=True,
+            bufsize=1
+        )
+        try:
+            for line in self.bot_process.stdout:
+                self.append_log(line.rstrip())
+            self.bot_process.wait()
+            if self.bot_process.returncode == 0:
+                self.status_label.configure(text="Status: Complete", text_color="blue")
+            else:
+                self.status_label.configure(text="Status: Error", text_color="red")
+        except Exception as e:
+            self.append_log(f"Bot error: {e}")
+            self.status_label.configure(text="Status: Error", text_color="red")
+        finally:
+            self.run_button.configure(state="normal")
+            self.stop_button.configure(state="disabled")
+            self.bot_process = None
     def update_book_area(self):
         if not self.books:
             self.book_frame.pack_forget()

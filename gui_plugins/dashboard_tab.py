@@ -2,6 +2,8 @@ import customtkinter as ctk
 import threading
 import time
 import datetime
+import subprocess
+import os
 
 class DashboardTab:
     def __init__(self, parent):
@@ -9,6 +11,13 @@ class DashboardTab:
         # Status and scan controls
         self.status_label = ctk.CTkLabel(self.frame, text="Status: Idle", text_color="black", font=ctk.CTkFont(size=14, weight="bold"))
         self.status_label.pack(pady=(20, 5))
+        # Version and update info
+        self.version_label = ctk.CTkLabel(self.frame, text="Version: ...", text_color="black")
+        self.version_label.pack(pady=2)
+        self.update_label = ctk.CTkLabel(self.frame, text="Update status: ...", text_color="black")
+        self.update_label.pack(pady=2)
+        self.check_updates_button = ctk.CTkButton(self.frame, text="Check for Updates", command=self.refresh_version_and_update, text_color="black")
+        self.check_updates_button.pack(pady=2)
         self.last_scan_label = ctk.CTkLabel(self.frame, text="Last Scan: Never", text_color="black")
         self.last_scan_label.pack(pady=5)
         btn_frame = ctk.CTkFrame(self.frame, fg_color="transparent")
@@ -61,6 +70,26 @@ class DashboardTab:
         self.log_textbox.configure(state="disabled")
         self.scan_thread = None
         self.stop_event = threading.Event()
+        self.refresh_version_and_update()
+    def refresh_version_and_update(self):
+        # Get git commit hash
+        try:
+            version = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=os.path.dirname(os.path.dirname(__file__))).decode().strip()
+            self.version_label.configure(text=f"Version: {version}")
+        except Exception:
+            self.version_label.configure(text="Version: unknown")
+        # Check for updates
+        try:
+            subprocess.check_output(["git", "remote", "update"], cwd=os.path.dirname(os.path.dirname(__file__)))
+            status = subprocess.check_output(["git", "status", "-uno"], cwd=os.path.dirname(os.path.dirname(__file__))).decode()
+            if "Your branch is behind" in status:
+                self.update_label.configure(text="Update status: Update available!", text_color="orange")
+            elif "Your branch is up to date" in status:
+                self.update_label.configure(text="Update status: Up to date", text_color="green")
+            else:
+                self.update_label.configure(text="Update status: Unknown", text_color="gray")
+        except Exception:
+            self.update_label.configure(text="Update status: unknown", text_color="gray")
     def start_scan(self):
         if self.scan_thread and self.scan_thread.is_alive():
             return

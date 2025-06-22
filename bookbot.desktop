@@ -2,7 +2,7 @@
 Version=1.0
 Name=Book Bot
 Comment=A GUI for managing the Reddit Book Bot
-Exec=/home/pi/bookbot/run_gui.sh
+Exec=~/bookbot/run_gui.sh
 Icon=utilities-terminal
 Terminal=false
 Type=Application

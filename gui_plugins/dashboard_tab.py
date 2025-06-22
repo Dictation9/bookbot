@@ -20,6 +20,9 @@ class DashboardTab:
         self.version_label.pack(pady=2)
         self.update_label = ctk.CTkLabel(inner, text="Update status: ...", text_color="black")
         self.update_label.pack(pady=2)
+        self.update_button = ctk.CTkButton(inner, text="Update Now", command=self.run_update, text_color="black")
+        self.update_button.pack(pady=2)
+        self.update_button.pack_forget()  # Hide by default
         self.check_updates_button = ctk.CTkButton(inner, text="Check for Updates", command=self.refresh_version_and_update, text_color="black")
         self.check_updates_button.pack(pady=2)
         self.last_scan_label = ctk.CTkLabel(inner, text="Last Scan: Never", text_color="black")
@@ -52,12 +55,16 @@ class DashboardTab:
             status = subprocess.check_output(["git", "status", "-uno"], cwd=os.path.dirname(os.path.dirname(__file__))).decode()
             if "Your branch is behind" in status:
                 self.update_label.configure(text="Update status: Update available!", text_color="orange")
+                self.update_button.pack(pady=2)
             elif "Your branch is up to date" in status:
                 self.update_label.configure(text="Update status: Up to date", text_color="green")
+                self.update_button.pack_forget()
             else:
                 self.update_label.configure(text="Update status: Unknown", text_color="gray")
+                self.update_button.pack_forget()
         except Exception:
             self.update_label.configure(text="Update status: unknown", text_color="gray")
+            self.update_button.pack_forget()
     def start_scan(self):
         if self.scan_thread and self.scan_thread.is_alive():
             return
@@ -107,6 +114,18 @@ class DashboardTab:
         self.log_textbox.insert("end", message + "\n")
         self.log_textbox.see("end")
         self.log_textbox.configure(state="disabled")
+    def run_update(self):
+        # Run manual_update.sh and refresh version/update status
+        import threading
+        def do_update():
+            self.update_button.configure(state="disabled", text="Updating...")
+            try:
+                subprocess.check_call(["bash", "manual_update.sh"], cwd=os.path.dirname(os.path.dirname(__file__)))
+            except Exception as e:
+                self.append_log(f"Update failed: {e}")
+            self.update_button.configure(state="normal", text="Update Now")
+            self.refresh_version_and_update()
+        threading.Thread(target=do_update, daemon=True).start()
 
 def get_tab(parent):
     tab = DashboardTab(parent)

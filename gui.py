@@ -16,19 +16,19 @@ class BookBotGUI(ctk.CTk):
         self.nav_frame.grid(row=0, column=0, sticky="nsew")
         self.nav_frame.grid_rowconfigure(5, weight=1) # Push widgets to the top
 
-        self.logo_label = ctk.CTkLabel(self.nav_frame, text="Book Bot", font=ctk.CTkFont(size=20, weight="bold"))
+        self.logo_label = ctk.CTkLabel(self.nav_frame, text="Book Bot", font=ctk.CTkFont(size=20, weight="bold"), text_color="black")
         self.logo_label.grid(row=0, column=0, padx=20, pady=20)
 
-        self.dashboard_button = ctk.CTkButton(self.nav_frame, text="Dashboard", command=self.dashboard_frame_event)
+        self.dashboard_button = ctk.CTkButton(self.nav_frame, text="Dashboard", command=self.dashboard_frame_event, text_color="black")
         self.dashboard_button.grid(row=1, column=0, padx=20, pady=10)
 
-        self.config_button = ctk.CTkButton(self.nav_frame, text="Configuration", command=self.config_frame_event)
+        self.config_button = ctk.CTkButton(self.nav_frame, text="Configuration", command=self.config_frame_event, text_color="black")
         self.config_button.grid(row=2, column=0, padx=20, pady=10)
 
-        self.csv_button = ctk.CTkButton(self.nav_frame, text="CSV Viewer", command=self.csv_frame_event)
+        self.csv_button = ctk.CTkButton(self.nav_frame, text="CSV Viewer", command=self.csv_frame_event, text_color="black")
         self.csv_button.grid(row=3, column=0, padx=20, pady=10)
 
-        self.logs_button = ctk.CTkButton(self.nav_frame, text="Log Viewer", command=self.log_frame_event)
+        self.logs_button = ctk.CTkButton(self.nav_frame, text="Log Viewer", command=self.log_frame_event, text_color="black")
         self.logs_button.grid(row=4, column=0, padx=20, pady=10)
 
         # --- Create Frames for Each Tab ---
@@ -38,10 +38,10 @@ class BookBotGUI(ctk.CTk):
         self.log_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
         
         # --- Placeholder Content for Frames ---
-        ctk.CTkLabel(self.dashboard_frame, text="Dashboard Frame - Controls and Live Log will be here.").pack(pady=20)
-        ctk.CTkLabel(self.config_frame, text="Configuration Frame - Settings editor will be here.").pack(pady=20)
-        ctk.CTkLabel(self.csv_frame, text="CSV Viewer Frame - Data table will be here.").pack(pady=20)
-        ctk.CTkLabel(self.log_frame, text="Log Viewer Frame - Log file content will be here.").pack(pady=20)
+        ctk.CTkLabel(self.dashboard_frame, text="Dashboard Frame - Controls and Live Log will be here.", text_color="black").pack(pady=20)
+        ctk.CTkLabel(self.config_frame, text="Configuration Frame - Settings editor will be here.", text_color="black").pack(pady=20)
+        ctk.CTkLabel(self.csv_frame, text="CSV Viewer Frame - Data table will be here.", text_color="black").pack(pady=20)
+        ctk.CTkLabel(self.log_frame, text="Log Viewer Frame - Log file content will be here.", text_color="black").pack(pady=20)
 
         # Select the default frame
         self.select_frame_by_name("dashboard")

@@ -18,6 +18,8 @@ class DashboardTab:
         # Version and update info
         self.version_label = ctk.CTkLabel(inner, text="Version: ...", text_color="black")
         self.version_label.pack(pady=2)
+        self.latest_version_label = ctk.CTkLabel(inner, text="Latest: ...", text_color="black")
+        self.latest_version_label.pack(pady=2)
         self.update_label = ctk.CTkLabel(inner, text="Update status: ...", text_color="black")
         self.update_label.pack(pady=2)
         btn_update_frame = ctk.CTkFrame(inner, fg_color="transparent")
@@ -51,9 +53,16 @@ class DashboardTab:
             self.version_label.configure(text=f"Version: {version}")
         except Exception:
             self.version_label.configure(text="Version: unknown")
-        # Check for updates
+        # Get latest remote commit hash
+        latest_version = None
         try:
             subprocess.check_output(["git", "remote", "update"], cwd=os.path.dirname(os.path.dirname(__file__)))
+            latest_version = subprocess.check_output(["git", "rev-parse", "--short", "origin/main"], cwd=os.path.dirname(os.path.dirname(__file__))).decode().strip()
+            self.latest_version_label.configure(text=f"Latest: {latest_version}")
+        except Exception:
+            self.latest_version_label.configure(text="Latest: unknown")
+        # Check for updates
+        try:
             status = subprocess.check_output(["git", "status", "-uno"], cwd=os.path.dirname(os.path.dirname(__file__))).decode()
             if "Your branch is behind" in status:
                 self.update_label.configure(text="Update status: Update available!", text_color="orange")

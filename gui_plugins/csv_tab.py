@@ -18,12 +18,6 @@ class CSVTab:
         self.entries = []
         self.header = []
         self.load_csv()
-        btn_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
-        btn_frame.grid(row=9999, column=0, columnspan=len(self.header), pady=10, sticky="w")
-        self.save_button = ctk.CTkButton(btn_frame, text="Save Changes", command=self.save_csv, text_color="black")
-        self.save_button.pack(side="left", padx=10)
-        self.reload_button = ctk.CTkButton(btn_frame, text="Reload", command=self.reload_csv, text_color="black")
-        self.reload_button.pack(side="left", padx=10)
     def load_csv(self):
         # Clear previous widgets
         for widget in self.inner.winfo_children():
@@ -54,6 +48,13 @@ class CSVTab:
                 e.grid(row=r+1, column=c, padx=2, pady=2)
                 row_entries.append(e)
             self.entries.append(row_entries)
+        # Place Save/Reload buttons at the next available row
+        btn_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
+        btn_frame.grid(row=len(rows)+1, column=0, columnspan=len(self.header), pady=10, sticky="w")
+        self.save_button = ctk.CTkButton(btn_frame, text="Save Changes", command=self.save_csv, text_color="black")
+        self.save_button.pack(side="left", padx=10)
+        self.reload_button = ctk.CTkButton(btn_frame, text="Reload", command=self.reload_csv, text_color="black")
+        self.reload_button.pack(side="left", padx=10)
     def save_csv(self):
         # Gather data from entries
         data = [self.header]
@@ -63,11 +64,4 @@ class CSVTab:
             writer = csv.writer(f)
             writer.writerows(data)
     def reload_csv(self):
-        self.load_csv()
-        # Re-add buttons
-        btn_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
-        btn_frame.grid(row=9999, column=0, columnspan=len(self.header), pady=10, sticky="w")
-        self.save_button = ctk.CTkButton(btn_frame, text="Save Changes", command=self.save_csv, text_color="black")
-        self.save_button.pack(side="left", padx=10)
-        self.reload_button = ctk.CTkButton(btn_frame, text="Reload", command=self.reload_csv, text_color="black")
-        self.reload_button.pack(side="left", padx=10) 
+        self.load_csv() 

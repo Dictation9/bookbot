@@ -15,12 +15,6 @@ class ConfigTab:
         self.inner = self.frame.inner
         self.entries = {}  # (section, option): entry
         self.load_config()
-        btn_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
-        btn_frame.grid(row=9999, column=0, columnspan=2, pady=10, sticky="w")
-        self.save_button = ctk.CTkButton(btn_frame, text="Save Changes", command=self.save_config, text_color="black")
-        self.save_button.pack(side="left", padx=10)
-        self.reload_button = ctk.CTkButton(btn_frame, text="Reload", command=self.reload_config, text_color="black")
-        self.reload_button.pack(side="left", padx=10)
     def load_config(self):
         # Clear previous widgets
         for widget in self.inner.winfo_children():
@@ -39,6 +33,13 @@ class ConfigTab:
                 entry.grid(row=row, column=1, sticky="w", padx=5, pady=2)
                 self.entries[(section, option)] = entry
                 row += 1
+        # Place Save/Reload buttons at the next available row
+        btn_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
+        btn_frame.grid(row=row, column=0, columnspan=2, pady=10, sticky="w")
+        self.save_button = ctk.CTkButton(btn_frame, text="Save Changes", command=self.save_config, text_color="black")
+        self.save_button.pack(side="left", padx=10)
+        self.reload_button = ctk.CTkButton(btn_frame, text="Reload", command=self.reload_config, text_color="black")
+        self.reload_button.pack(side="left", padx=10)
     def save_config(self):
         config = configparser.ConfigParser()
         config.read(CONFIG_PATH)
@@ -49,10 +50,4 @@ class ConfigTab:
         with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
             config.write(f)
     def reload_config(self):
-        self.load_config()
-        btn_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
-        btn_frame.grid(row=9999, column=0, columnspan=2, pady=10, sticky="w")
-        self.save_button = ctk.CTkButton(btn_frame, text="Save Changes", command=self.save_config, text_color="black")
-        self.save_button.pack(side="left", padx=10)
-        self.reload_button = ctk.CTkButton(btn_frame, text="Reload", command=self.reload_config, text_color="black")
-        self.reload_button.pack(side="left", padx=10) 
+        self.load_config() 

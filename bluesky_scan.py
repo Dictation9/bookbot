@@ -11,6 +11,14 @@ from bookbot import robust_lookup_open_library, lookup_romance_io, lookup_google
 import datetime
 import urllib.parse
 
+# Set up a separate logger for Bluesky post scans
+bluesky_post_logger = logging.getLogger("bluesky_post_scan")
+bluesky_post_logger.setLevel(logging.INFO)
+bluesky_log_handler = logging.FileHandler("bluesky.log")
+bluesky_log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+if not bluesky_post_logger.hasHandlers():
+    bluesky_post_logger.addHandler(bluesky_log_handler)
+
 console = Console()
 
 def convert_bluesky_feed_url_to_aturi(feed_url, client):
@@ -48,6 +56,12 @@ def run_bluesky_scan(config, emit_post_count=False):
     password = config['bluesky'].get('app_password', '').strip()
     feeds = [f.strip() for f in config['bluesky'].get('feeds', '').split(',') if f.strip()]
     hashtags = [h.strip().lstrip('#') for h in config['bluesky'].get('hashtags', '').split(',') if h.strip()]
+    # Get post limit from config
+    post_limit_str = config['bluesky'].get('bluesky_post_limit', '').strip()
+    try:
+        post_limit = int(post_limit_str) if post_limit_str else 0
+    except Exception:
+        post_limit = 0
     if not username or not password:
         console.print("[yellow]Bluesky username or app_password not set. Skipping Bluesky scan.[/]")
         return
@@ -95,13 +109,19 @@ def run_bluesky_scan(config, emit_post_count=False):
                 post_count = len(feed_result.feed)
                 if emit_post_count:
                     print(f"[BLUESKY_POST_COUNT] {post_count}")
+                processed = 0
                 for feed_view in feed_result.feed:
+                    if post_limit and processed >= post_limit:
+                        break
+                    processed += 1
                     post = feed_view.post.record
                     author = feed_view.post.author
                     content = getattr(post, 'text', '')
-                    mentions = extract_books(content)
                     created_at = getattr(post, 'created_at', '')
                     bluesky_url = f"https://bsky.app/profile/{author.handle}/post/{feed_view.post.uri.split('/')[-1]}"
+                    # Log every post scanned from feeds
+                    bluesky_post_logger.info(f"[Bluesky][Scan][Feed] @{author.handle} | {created_at} | {bluesky_url} | {content[:200].replace(chr(10), ' ')}")
+                    mentions = extract_books(content)
                     for title, author_name in mentions:
                         key = (title.lower(), author_name.lower())
                         if key in seen:
@@ -171,9 +191,11 @@ def run_bluesky_scan(config, emit_post_count=False):
                     content = getattr(post, 'text', '')
                     if f"#{hashtag}" not in content:
                         continue
-                    mentions = extract_books(content)
                     created_at = getattr(post, 'created_at', '')
                     bluesky_url = f"https://bsky.app/profile/{author.handle}/post/{feed_view.post.uri.split('/')[-1]}"
+                    # Log every post scanned from hashtags
+                    bluesky_post_logger.info(f"[Bluesky][Scan][Hashtag] @{author.handle} | {created_at} | {bluesky_url} | {content[:200].replace(chr(10), ' ')}")
+                    mentions = extract_books(content)
                     for title, author_name in mentions:
                         key = (title.lower(), author_name.lower())
                         if key in seen:

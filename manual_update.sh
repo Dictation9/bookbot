@@ -357,32 +357,12 @@ hard_reset() {
     CURRENT_DIR=$(pwd)
     PARENT_DIR=$(dirname "$CURRENT_DIR")
     PROJECT_NAME=$(basename "$CURRENT_DIR")
+    # Copy this script to /tmp and run the rest from there
     cp "$0" /tmp/bookbot_update_backup.sh
-    print_status "Deleting all current files..."
+    chmod +x /tmp/bookbot_update_backup.sh
+    print_status "Switching to backup script to complete hard reset..."
     cd "$PARENT_DIR"
-    rm -rf "$PROJECT_NAME"
-    print_status "Downloading fresh code from git..."
-    if git clone https://github.com/Dictation9/Bookbot.git "$PROJECT_NAME" 2>/dev/null; then
-        cd "$PROJECT_NAME"
-        cp /tmp/bookbot_update_backup.sh "$0"
-        chmod +x "$0"
-        print_status "Creating new virtual environment..."
-        python3 -m venv venv
-        print_status "Installing dependencies..."
-        source venv/bin/activate
-        pip install --upgrade pip
-        pip install -r requirements.txt
-        print_status "Setting up fresh installation..."
-        mkdir -p logs
-        mkdir -p backups
-        print_status "Hard reset completed successfully!"
-        print_status "Fresh installation is ready."
-        print_status "You can now run: python3 bookbot.py"
-    else
-        print_error "Failed to download fresh code from git."
-        print_error "Please manually download the code and reinstall."
-        exit 1
-    fi
+    exec /tmp/bookbot_update_backup.sh --finish-hard-reset "$PROJECT_NAME" "$CURRENT_DIR"
 }
 
 show_menu() {
@@ -548,5 +528,34 @@ main() {
         read -p "Press Enter to continue..."
     done
 }
+
+# Handler for finishing the hard reset from /tmp
+if [[ "$1" == "--finish-hard-reset" ]]; then
+    PROJECT_NAME="$2"
+    PROJECT_PATH="$3"
+    echo "[INFO] Deleting project directory: $PROJECT_PATH"
+    rm -rf "$PROJECT_PATH"
+    echo "[INFO] Cloning fresh code from git..."
+    if git clone https://github.com/Dictation9/Bookbot.git "$PROJECT_NAME"; then
+        cd "$PROJECT_NAME"
+        echo "[INFO] Creating new virtual environment..."
+        python3 -m venv venv
+        echo "[INFO] Installing dependencies..."
+        source venv/bin/activate
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        echo "[INFO] Setting up fresh installation..."
+        mkdir -p logs
+        mkdir -p backups
+        echo "[INFO] Hard reset completed successfully!"
+        echo "[INFO] Fresh installation is ready."
+        echo "[INFO] You can now run: python3 bookbot.py"
+    else
+        echo "[ERROR] Failed to download fresh code from git."
+        echo "[ERROR] Please manually download the code and reinstall."
+        exit 1
+    fi
+    exit 0
+fi
 
 main "$@" 

@@ -33,6 +33,20 @@ class DashboardTab:
         self.update_button.pack_forget()  # Hide by default
         self.last_scan_label = ctk.CTkLabel(inner, text="Last Scan: Never", text_color="black")
         self.last_scan_label.pack(pady=5)
+        # --- Stats labels ---
+        self.books_count_label = ctk.CTkLabel(inner, text="Books in CSV: ...", text_color="black", font=ctk.CTkFont(size=13, weight="bold"))
+        self.books_count_label.pack(pady=(5, 0))
+        self.posts_checked_label = ctk.CTkLabel(inner, text="Posts checked: ...", text_color="black", font=ctk.CTkFont(size=13, weight="bold"))
+        self.posts_checked_label.pack(pady=(0, 0))
+        self.comments_checked_label = ctk.CTkLabel(inner, text="Comments checked: ...", text_color="black", font=ctk.CTkFont(size=13, weight="bold"))
+        self.comments_checked_label.pack(pady=(0, 0))
+        self.ignored_comments_label = ctk.CTkLabel(inner, text="Ignored comments: ...", text_color="black", font=ctk.CTkFont(size=13, weight="bold"))
+        self.ignored_comments_label.pack(pady=(0, 0))
+        self.last_email_label = ctk.CTkLabel(inner, text="Last email sent: ...", text_color="black", font=ctk.CTkFont(size=13, weight="bold"))
+        self.last_email_label.pack(pady=(0, 0))
+        self.last_email_csv_label = ctk.CTkLabel(inner, text="Last email with CSV: ...", text_color="black", font=ctk.CTkFont(size=13, weight="bold"))
+        self.last_email_csv_label.pack(pady=(0, 0))
+        # ---
         btn_frame = ctk.CTkFrame(inner, fg_color="transparent")
         btn_frame.pack(pady=10)
         self.run_button = ctk.CTkButton(btn_frame, text="Run Scan", command=self.start_scan, text_color="black")
@@ -48,6 +62,49 @@ class DashboardTab:
         self.scan_thread = None
         self.bot_process = None
         self.refresh_version_and_update()
+        self.refresh_stats()
+
+    def refresh_stats(self):
+        import csv
+        import os
+        # Count books in CSV
+        csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "book_mentions.csv")
+        books_count = 0
+        if os.path.exists(csv_path):
+            with open(csv_path, newline='', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                next(reader, None)  # skip header
+                books_count = sum(1 for _ in reader)
+        self.books_count_label.configure(text=f"Books in CSV: {books_count}")
+        # Parse bot.log for stats
+        log_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs", "bot.log")
+        posts_checked = comments_checked = ignored_comments = None
+        last_email_time = last_email_csv_time = "..."
+        if os.path.exists(log_path):
+            with open(log_path, encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+            # Find last [STATS] and last email lines
+            for line in reversed(lines):
+                if posts_checked is None and "[STATS]" in line:
+                    import re
+                    m = re.search(r"posts=(\d+) comments=(\d+) ignored=(\d+)", line)
+                    if m:
+                        posts_checked = int(m.group(1))
+                        comments_checked = int(m.group(2))
+                        ignored_comments = int(m.group(3))
+                if last_email_time == "..." and ("CSV and logs email sent" in line or "CSV report email process completed" in line):
+                    # Extract timestamp
+                    ts = line.split("[")[0].strip()
+                    last_email_time = ts
+                    last_email_csv_time = ts
+                if posts_checked is not None and last_email_time != "...":
+                    break
+        self.posts_checked_label.configure(text=f"Posts checked: {posts_checked if posts_checked is not None else '...'}")
+        self.comments_checked_label.configure(text=f"Comments checked: {comments_checked if comments_checked is not None else '...'}")
+        self.ignored_comments_label.configure(text=f"Ignored comments: {ignored_comments if ignored_comments is not None else '...'}")
+        self.last_email_label.configure(text=f"Last email sent: {last_email_time}")
+        self.last_email_csv_label.configure(text=f"Last email with CSV: {last_email_csv_time}")
+
     def refresh_version_and_update(self):
         # Get git commit hash
         try:
@@ -134,6 +191,7 @@ class DashboardTab:
             self.run_button.configure(state="normal")
             self.stop_button.configure(state="disabled")
             self.bot_process = None
+            self.refresh_stats()
     def append_log(self, message):
         self.log_textbox.configure(state="normal")
         self.log_textbox.insert("end", message + "\n")

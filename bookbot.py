@@ -26,6 +26,7 @@ try:
     from bluesky_scan import run_bluesky_scan
 except ImportError:
     run_bluesky_scan = None
+import sys
 
 # Set up error logging
 logging.basicConfig(filename="error.log", level=logging.ERROR,
@@ -194,7 +195,8 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
         pass
     key = (book['title'].strip().lower(), book['author'].strip().lower())
     if key in existing:
-        return
+        # Book already in CSV, return False to indicate ignored
+        return False
     write_header = not os.path.exists(csv_path)
     fieldnames = ['title', 'author', 'isbn13', 'tags', 'cover_url', 'romance_io_url', 'google_books_url', 'steam', 'datetime_added', 'reddit_created_utc', 'reddit_created_date']
     with open(csv_path, 'a', newline='', encoding='utf-8') as csvfile:
@@ -216,6 +218,7 @@ def write_book_to_csv(book, csv_path="book_mentions.csv"):
         })
         csvfile.flush()
     activity_logger.info(f"Wrote book to CSV: {book['title']} by {book['author']}")
+    return True
 
 def auto_update():
     import subprocess
@@ -294,10 +297,9 @@ def update_csv_with_romance_bot(title, author, romance_io_url, topics, steam, cs
             writer.writerows(rows)
     return updated
 
-def process_comments(post, seen):
+def process_comments(post, seen, comment_counter, ignored_counter):
     # Process comments with retry logic for API errors
     try:
-        # Replace MoreComments with a fresh fetch, which is more robust
         post.comments.replace_more(limit=None)
         comments = post.comments.list()
     except (prawcore.exceptions.RequestException, prawcore.exceptions.ServerError) as e:
@@ -306,13 +308,13 @@ def process_comments(post, seen):
         return
 
     for comment in comments:
+        comment_counter[0] += 1
         # Each handler will now be responsible for calling write_book_to_csv with the correct data
         if is_romance_bot(comment):
-            handle_romance_bot_comment(comment, seen)
-            continue # Move to the next comment
-            
+            handle_romance_bot_comment(comment, seen, ignored_counter)
+            continue
         if is_curly_bracket_comment(comment):
-            handle_curly_bracket_comment(comment, seen)
+            handle_curly_bracket_comment(comment, seen, ignored_counter)
             continue
 
 def send_csv_report():
@@ -383,32 +385,28 @@ def run_scan_and_enrich(reddit):
         try:
             with open(csv_path, newline='', encoding='utf-8') as csvfile:
                 reader = csv.reader(csvfile)
-                # Skip header
                 next(reader, None)
                 for row in reader:
-                    if row: 
+                    if row:
                         title, author = row[0].strip().lower(), row[1].strip().lower()
                         seen.add((title, author))
         except (FileNotFoundError, StopIteration):
-            pass # File is empty or doesn't exist
-    
+            pass
     console.print(f"🔎 Scanning subreddit(s): [bold cyan]{SUBREDDIT_NAME}[/bold cyan]...")
     activity_logger.info(f"Scanning subreddit(s): {SUBREDDIT_NAME}...")
-
     subreddit = reddit.subreddit(SUBREDDIT_NAME)
-    
+    post_counter = 0
+    comment_counter = [0]  # Use list for mutability in nested functions
+    ignored_counter = [0]
     try:
         if POST_LIMIT:
             posts = subreddit.new(limit=POST_LIMIT)
         else:
             posts = subreddit.new(limit=None)
         for post in posts:
-            # Pass the post object to process_comments
-            process_comments(post, seen)
-            
-            # Also process the post body itself using the curly bracket handler
-            handle_curly_bracket_comment(post, seen)
-
+            post_counter += 1
+            process_comments(post, seen, comment_counter, ignored_counter)
+            handle_curly_bracket_comment(post, seen, ignored_counter)
             content = f"{post.title} {post.selftext}"
             mentions = extract_books(content)
             reddit_created_utc = getattr(post, 'created_utc', None)
@@ -418,6 +416,7 @@ def run_scan_and_enrich(reddit):
             for title, author in mentions:
                 key = (title, author)
                 if key in seen:
+                    ignored_counter[0] += 1
                     continue
                 seen.add(key)
                 book = robust_lookup_open_library(title, author)
@@ -427,7 +426,9 @@ def run_scan_and_enrich(reddit):
                     book['romance_io_url'] = romance_link
                     book['reddit_url'] = reddit_url
                     activity_logger.info(f"Found book mention: {book['title']} by {book['author']}")
-                    write_book_to_csv(book)
+                    added = write_book_to_csv(book)
+                    if not added:
+                        ignored_counter[0] += 1
                     display_book(book)
                     continue
                 romance_book = lookup_romance_io(title, author)
@@ -436,7 +437,9 @@ def run_scan_and_enrich(reddit):
                     romance_book['reddit_created_date'] = reddit_created_date
                     romance_book['reddit_url'] = reddit_url
                     activity_logger.info(f"Found book mention on romance.io: {romance_book['title']} by {romance_book['author']}")
-                    write_book_to_csv(romance_book)
+                    added = write_book_to_csv(romance_book)
+                    if not added:
+                        ignored_counter[0] += 1
                     console.print(f"[yellow]No data found on Open Library, but found on romance.io: {title} by {author}[/]")
                     activity_logger.info(f"No data found on Open Library, but found on romance.io: {title} by {author}")
                 else:
@@ -446,7 +449,9 @@ def run_scan_and_enrich(reddit):
                         google_book['reddit_created_date'] = reddit_created_date
                         google_book['reddit_url'] = reddit_url
                         activity_logger.info(f"Found book mention on Google Books: {google_book['title']} by {google_book['author']}")
-                        write_book_to_csv(google_book)
+                        added = write_book_to_csv(google_book)
+                        if not added:
+                            ignored_counter[0] += 1
                         console.print(f"[yellow]No data found on Open Library or romance.io, but found on Google Books: {title} by {author}[/]")
                         activity_logger.info(f"No data found on Open Library or romance.io, but found on Google Books: {title} by {author}")
                     else:
@@ -456,14 +461,16 @@ def run_scan_and_enrich(reddit):
                             'reddit_created_utc': reddit_created_utc, 'reddit_created_date': reddit_created_date, 'reddit_url': reddit_url
                         }
                         activity_logger.info(f"No data found for: {title} by {author}, adding to CSV anyway.")
-                        write_book_to_csv(no_data_book)
+                        added = write_book_to_csv(no_data_book)
+                        if not added:
+                            ignored_counter[0] += 1
                         console.print(f"[yellow]No data found for: {title} by {author}[/]")
                         activity_logger.info(f"No data found for: {title} by {author}")
-
         activity_logger.info(f"✅ Book scan complete.")
         console.print(f"[cyan]✅ Book scan complete.[/]")
         activity_logger.info("✅ Book scan complete.")
-
+        # Log scan stats in a parseable format
+        activity_logger.info(f"[STATS] posts={post_counter} comments={comment_counter[0]} ignored={ignored_counter[0]}")
         # Double-check CSV if enabled on run
         if DOUBLE_CHECK_ON_RUN:
             activity_logger.info(f"Running CSV double-check in mode: {DOUBLE_CHECK_MODE}")
@@ -482,6 +489,18 @@ def main():
             activity_logger.info("Deleted book_mentions.csv at start of run due to config setting.")
         else:
             activity_logger.info("CSV deletion requested but book_mentions.csv does not exist.")
+
+    # If --bluesky-only is passed, only run Bluesky scan
+    if len(sys.argv) > 1 and sys.argv[1] == "--bluesky-only":
+        count_posts = len(sys.argv) > 2 and sys.argv[2] == "--count-posts-for-dashboard"
+        if config.has_section('bluesky') and config['bluesky'].get('scan_enabled', 'false').strip().lower() == 'true':
+            if run_bluesky_scan:
+                run_bluesky_scan(config, emit_post_count=count_posts)
+            else:
+                console.print("[yellow]Bluesky scanning is enabled in config, but bluesky_scan module is missing.[/]")
+        else:
+            console.print("[yellow]Bluesky scanning is not enabled in config.[/]")
+        return
 
     reddit = praw.Reddit(
         client_id=REDDIT_CLIENT_ID,

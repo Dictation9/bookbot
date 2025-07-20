@@ -12,7 +12,7 @@ import datetime
 
 console = Console()
 
-def run_bluesky_scan(config):
+def run_bluesky_scan(config, emit_post_count=False):
     console.print("[cyan]🔎 Scanning Bluesky for book mentions...[/]")
     if not config.has_section('bluesky'):
         console.print("[yellow]No [bluesky] section in config. Skipping Bluesky scan.[/]")
@@ -32,13 +32,19 @@ def run_bluesky_scan(config):
         activity_logger.error(f"Failed to authenticate with Bluesky: {e}")
         return
     seen = set()
+    duplicate_count = 0
     found_any = False
+    books_added = 0
+    books_ignored = 0
     # 1. Try feeds if specified
     if feeds:
         for feed in feeds:
             try:
                 console.print(f"[blue]Scanning Bluesky feed: {feed}[/]")
                 feed_result = client.get_feed(feed=feed)
+                post_count = len(feed_result.feed)
+                if emit_post_count:
+                    print(f"[BLUESKY_POST_COUNT] {post_count}")
                 for feed_view in feed_result.feed:
                     post = feed_view.post.record
                     author = feed_view.post.author
@@ -49,14 +55,27 @@ def run_bluesky_scan(config):
                     for title, author_name in mentions:
                         key = (title.lower(), author_name.lower())
                         if key in seen:
+                            duplicate_count += 1
                             continue
                         seen.add(key)
+                        # Check CSV before adding
                         book = robust_lookup_open_library(title, author_name)
                         if book:
                             book['bluesky_created_date'] = created_at
                             book['bluesky_url'] = bluesky_url
-                            activity_logger.info(f"[Bluesky] Found book mention: {book['title']} by {book['author']}")
+                            # Only add if not in CSV
+                            before = books_added
                             write_book_to_csv(book)
+                            # Check if added
+                            with open('book_mentions.csv', newline='', encoding='utf-8') as csvfile:
+                                import csv
+                                reader = csv.DictReader(csvfile)
+                                count = sum(1 for row in reader if row['title'].strip().lower() == title.lower() and row['author'].strip().lower() == author_name.lower())
+                            if count == 1:
+                                books_added += 1
+                            else:
+                                books_ignored += 1
+                            activity_logger.info(f"[Bluesky] Found book mention: {book['title']} by {book['author']}")
                             found_any = True
                             continue
                         romance_book = lookup_romance_io(title, author_name)
@@ -91,9 +110,12 @@ def run_bluesky_scan(config):
         for hashtag in hashtags:
             try:
                 console.print(f"[blue]Searching Bluesky for hashtag: #{hashtag}[/]")
-                # There is no official hashtag search, so we search the timeline and filter
                 timeline = client.get_timeline(algorithm='reverse-chronological')
-                for feed_view in timeline.feed:
+                # Count posts with the hashtag
+                posts_with_hashtag = [feed_view for feed_view in timeline.feed if f"#{hashtag}" in getattr(feed_view.post.record, 'text', '')]
+                if emit_post_count:
+                    print(f"[BLUESKY_POST_COUNT] {len(posts_with_hashtag)}")
+                for feed_view in posts_with_hashtag:
                     post = feed_view.post.record
                     author = feed_view.post.author
                     content = getattr(post, 'text', '')
@@ -105,14 +127,25 @@ def run_bluesky_scan(config):
                     for title, author_name in mentions:
                         key = (title.lower(), author_name.lower())
                         if key in seen:
+                            duplicate_count += 1
                             continue
                         seen.add(key)
+                        # Check CSV before adding
                         book = robust_lookup_open_library(title, author_name)
                         if book:
                             book['bluesky_created_date'] = created_at
                             book['bluesky_url'] = bluesky_url
-                            activity_logger.info(f"[Bluesky] Found book mention: {book['title']} by {book['author']}")
+                            before = books_added
                             write_book_to_csv(book)
+                            with open('book_mentions.csv', newline='', encoding='utf-8') as csvfile:
+                                import csv
+                                reader = csv.DictReader(csvfile)
+                                count = sum(1 for row in reader if row['title'].strip().lower() == title.lower() and row['author'].strip().lower() == author_name.lower())
+                            if count == 1:
+                                books_added += 1
+                            else:
+                                books_ignored += 1
+                            activity_logger.info(f"[Bluesky] Found book mention: {book['title']} by {book['author']}")
                             found_any = True
                             continue
                         romance_book = lookup_romance_io(title, author_name)
@@ -147,4 +180,8 @@ def run_bluesky_scan(config):
         activity_logger.info("✅ Bluesky book scan complete.")
     else:
         console.print("[yellow]No book mentions found on Bluesky.[/]")
-        activity_logger.info("No book mentions found on Bluesky.") 
+        activity_logger.info("No book mentions found on Bluesky.")
+    if emit_post_count:
+        print(f"[BLUESKY_DUPLICATES] {duplicate_count}")
+        print(f"[BLUESKY_ADDED] {books_added}")
+        print(f"[BLUESKY_IGNORED] {books_ignored}") 

@@ -26,7 +26,7 @@ def is_curly_bracket_comment(item):
         content = item.selftext
     return extract_books(content)
 
-def handle_curly_bracket_comment(item, seen):
+def handle_curly_bracket_comment(item, seen, ignored_counter=None):
     """Handles posts or comments with curly bracket mentions."""
     content = ""
     if hasattr(item, 'body'): # It's a comment
@@ -54,6 +54,8 @@ def handle_curly_bracket_comment(item, seen):
     for title, author in mentions:
         key = (title.lower(), author.lower())
         if key in seen:
+            if ignored_counter is not None:
+                ignored_counter[0] += 1
             continue
         seen.add(key)
 
@@ -79,4 +81,6 @@ def handle_curly_bracket_comment(item, seen):
             book['romance_io_url'] = romance_link
         
         activity_logger.info(f"Found mention for '{title}' by '{author}' in r/{subreddit_name}. Writing to CSV.")
-        write_book_to_csv(book) 
+        added = write_book_to_csv(book)
+        if ignored_counter is not None and not added:
+            ignored_counter[0] += 1 

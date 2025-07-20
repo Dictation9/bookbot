@@ -71,7 +71,7 @@ def extract_romance_bot_data(text):
     steam_rating = str(STEAM_LABEL_TO_NUM.get(steam, '')) if steam else ''
     return romance_link, topics, steam, steam_rating
 
-def handle_romance_bot_comment(comment, seen):
+def handle_romance_bot_comment(comment, seen, ignored_counter=None):
     subreddit_name = comment.subreddit.display_name
     reddit_created_utc = getattr(comment, 'created_utc', None)
     reddit_created_date = datetime.datetime.utcfromtimestamp(reddit_created_utc).isoformat() if reddit_created_utc else ''
@@ -123,7 +123,9 @@ def handle_romance_bot_comment(comment, seen):
                 'reddit_url': reddit_url,
                 'subreddit': subreddit_name
             }
-            write_book_to_csv(romance_book)
+            added = write_book_to_csv(romance_book)
+            if ignored_counter is not None and not added:
+                ignored_counter[0] += 1
             activity_logger.info(f"Added romance-bot book: {title} by {author}")
             console.print("-" * 60)
             console.print(f"[ROMANCE-BOT] {title} by {author}")

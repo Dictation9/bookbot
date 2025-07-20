@@ -229,3 +229,54 @@ for comment in comments:
 ### Existing Handlers
 - `romance_bot_handler.py`: Handles comments from romance-bot, including both curly-brace and plain `Title by Author` formats.
 - `bot_handler_template.py`: Template for creating new handlers.
+
+## 🦋 Bluesky Scanning (Optional)
+
+Book Bot can also scan the Bluesky social network for book mentions, in addition to Reddit.
+
+### Enabling Bluesky Scanning
+
+1. Open your `config.ini` file and add or edit the `[bluesky]` section:
+
+```ini
+[bluesky]
+# Bluesky username (handle)
+username = yourname.bsky.social
+# Bluesky app password (see Bluesky settings)
+app_password = your_app_password
+# Comma-separated list of Bluesky feeds to scan (e.g., feed1,feed2). Leave blank to scan the home timeline.
+feeds = 
+# Optionally, scan for posts containing these hashtags (comma-separated, without #). If feeds are blank, this will be used.
+hashtags = 
+# Set to true to enable Bluesky scanning
+scan_enabled = true
+```
+
+- You must create an [App Password](https://bsky.app/settings/app-passwords) in your Bluesky account settings.
+- You can scan specific feeds, or leave `feeds` blank and specify hashtags to search for.
+
+### How It Works
+
+- When enabled, Book Bot will scan Bluesky for posts mentioning books in the format `{Title by Author}`.
+- Book mentions are enriched and added to the same `book_mentions.csv` as Reddit results (no duplicates).
+- The scan can be run from the command line or from the GUI.
+
+### Using the GUI Bluesky Dashboard
+
+- The GUI now includes a **Bluesky Dashboard** tab (on the left) for running and monitoring Bluesky scans.
+- The dashboard shows:
+  - Number of posts to process
+  - Duplicates found
+  - Books added to CSV
+  - Books ignored (already in CSV)
+- You can run or stop Bluesky scans independently of Reddit scans.
+
+### Command Line Only Bluesky Scan
+
+To run only the Bluesky scan from the command line:
+
+```bash
+python3 bookbot.py --bluesky-only
+```
+
+This will process Bluesky posts according to your config and update the CSV/logs.

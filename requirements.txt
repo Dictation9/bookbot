@@ -6,3 +6,5 @@ setproctitle
 customtkinter
 atproto
 Flask>=2.0
+psutil
+gpiozero

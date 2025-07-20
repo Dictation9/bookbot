@@ -15,8 +15,85 @@
     </ul>
     <div class="mt-3">
         <h2>System Dashboard</h2>
-        <p>System info and status will appear here.</p>
+        <div class="row">
+            <div class="col-md-6">
+                <ul class="list-group">
+                    <li class="list-group-item">
+                        <strong>CPU Usage:</strong> {{ cpu_percent }}%
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Memory Usage:</strong> {{ mem_used }} MB / {{ mem_total }} MB ({{ mem_percent }}%)
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Temperature:</strong>
+                        {% if temp is not none %}
+                            {{ temp|round(1) }} &deg;C
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Fan Speed:</strong>
+                        {% if fan_speed is not none %}
+                            {{ fan_speed }} RPM
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <canvas id="statsChart" height="300"></canvas>
+            </div>
+        </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    let chart;
+    function fetchAndUpdateChart() {
+        fetch('/api/stats').then(r => r.json()).then(data => {
+            const labels = data.map(s => new Date(s.timestamp * 1000).toLocaleTimeString());
+            const cpu = data.map(s => s.cpu_percent);
+            const mem = data.map(s => s.mem_percent);
+            const temp = data.map(s => s.temp);
+            const fan = data.map(s => s.fan_speed);
+            if (!chart) {
+                chart = new Chart(document.getElementById('statsChart').getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'CPU %', data: cpu, borderColor: 'rgb(75,192,192)', fill: false, yAxisID: 'y' },
+                            { label: 'Memory %', data: mem, borderColor: 'rgb(255,99,132)', fill: false, yAxisID: 'y' },
+                            { label: 'Temp (°C)', data: temp, borderColor: 'rgb(255,205,86)', fill: false, yAxisID: 'y2' },
+                            { label: 'Fan RPM', data: fan, borderColor: 'rgb(54,162,235)', fill: false, yAxisID: 'y3' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        interaction: { mode: 'index', intersect: false },
+                        stacked: false,
+                        plugins: { legend: { position: 'top' } },
+                        scales: {
+                            y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'CPU/Memory %' }, min: 0, max: 100 },
+                            y2: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Temp (°C)' }, grid: { drawOnChartArea: false } },
+                            y3: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Fan RPM' }, grid: { drawOnChartArea: false }, offset: true }
+                        }
+                    }
+                });
+            } else {
+                chart.data.labels = labels;
+                chart.data.datasets[0].data = cpu;
+                chart.data.datasets[1].data = mem;
+                chart.data.datasets[2].data = temp;
+                chart.data.datasets[3].data = fan;
+                chart.update();
+            }
+        });
+    }
+    fetchAndUpdateChart();
+    setInterval(fetchAndUpdateChart, 5000);
+    </script>
 </div>
 </body>
 </html> 

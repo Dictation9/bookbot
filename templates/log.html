@@ -15,8 +15,61 @@
     </ul>
     <div class="mt-3">
         <h2>Log Tab</h2>
-        <p>Log output will appear here.</p>
+        <div class="mb-3">
+            <label for="logSelect" class="form-label">Select Log File:</label>
+            <select id="logSelect" class="form-select" style="max-width: 300px; display: inline-block;"></select>
+            <button id="reloadBtn" class="btn btn-secondary btn-sm ms-2">Reload</button>
+            <a id="downloadBtn" class="btn btn-primary btn-sm ms-2" href="#" download style="display:inline-block;">Download</a>
+            <a id="downloadAllBtn" class="btn btn-success btn-sm ms-2" href="/download/logs/all.zip" download>Download All Logs (ZIP)</a>
+        </div>
+        <pre id="logContent" style="background:#222; color:#eee; padding:1em; border-radius:6px; max-height:500px; overflow:auto; font-size:13px;"></pre>
     </div>
+    <script>
+    async function fetchLogList() {
+        const res = await fetch('/api/logs/list');
+        const files = await res.json();
+        const select = document.getElementById('logSelect');
+        select.innerHTML = '';
+        files.forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f;
+            opt.textContent = f;
+            select.appendChild(opt);
+        });
+        if (files.length > 0) {
+            select.value = files[0];
+            updateDownloadLink(files[0]);
+            fetchLogContent(files[0]);
+        } else {
+            document.getElementById('logContent').textContent = 'No log files found.';
+            updateDownloadLink(null);
+        }
+    }
+    async function fetchLogContent(logname) {
+        const res = await fetch(`/api/logs/${encodeURIComponent(logname)}`);
+        const data = await res.json();
+        document.getElementById('logContent').textContent = data.log || data.error || 'No content.';
+    }
+    function updateDownloadLink(logname) {
+        const btn = document.getElementById('downloadBtn');
+        if (logname) {
+            btn.href = `/download/log/${encodeURIComponent(logname)}`;
+            btn.style.display = 'inline-block';
+        } else {
+            btn.href = '#';
+            btn.style.display = 'none';
+        }
+    }
+    document.getElementById('logSelect').addEventListener('change', function() {
+        fetchLogContent(this.value);
+        updateDownloadLink(this.value);
+    });
+    document.getElementById('reloadBtn').addEventListener('click', function() {
+        const select = document.getElementById('logSelect');
+        if (select.value) fetchLogContent(select.value);
+    });
+    window.addEventListener('DOMContentLoaded', fetchLogList);
+    </script>
 </div>
 </body>
 </html> 

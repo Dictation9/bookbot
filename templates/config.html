@@ -15,8 +15,75 @@
     </ul>
     <div class="mt-3">
         <h2>Config Tab</h2>
-        <p>Configuration options will appear here.</p>
+        <div id="config-form-container">
+            <div class="alert alert-info">Loading configuration...</div>
+        </div>
+        <button id="save-btn" class="btn btn-primary mt-3" style="display:none;">Save Changes</button>
+        <div id="save-status" class="mt-2"></div>
     </div>
+<script>
+function escapeHtml(text) {
+    var map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+function renderConfigForm(config) {
+    let html = '';
+    for (const [section, sectionData] of Object.entries(config)) {
+        html += `<div class='card mb-3'><div class='card-header'><b>[${escapeHtml(section)}]</b></div><div class='card-body'>`;
+        if (sectionData.__comments__ && sectionData.__comments__.length) {
+            html += `<div class='mb-2 text-muted small'>${sectionData.__comments__.map(escapeHtml).join('<br>')}</div>`;
+        }
+        for (const [option, optdata] of Object.entries(sectionData.__options__)) {
+            html += `<div class='mb-3'>`;
+            html += `<label class='form-label'><b>${escapeHtml(option)}</b></label>`;
+            if (optdata.comments && optdata.comments.length) {
+                html += `<div class='form-text mb-1'>${optdata.comments.map(escapeHtml).join('<br>')}</div>`;
+            }
+            html += `<input type='text' class='form-control' name='${escapeHtml(section)}__${escapeHtml(option)}' value='${escapeHtml(optdata.value)}'>`;
+            html += `</div>`;
+        }
+        html += `</div></div>`;
+    }
+    document.getElementById('config-form-container').innerHTML = `<form id='config-form'>${html}</form>`;
+    document.getElementById('save-btn').style.display = '';
+}
+function getConfig() {
+    fetch('/api/config').then(r => r.json()).then(config => {
+        window._configData = config;
+        renderConfigForm(config);
+    });
+}
+function showStatus(msg, type) {
+    document.getElementById('save-status').innerHTML = `<div class='alert alert-${type}'>${msg}</div>`;
+}
+document.addEventListener('DOMContentLoaded', function() {
+    getConfig();
+    document.getElementById('save-btn').onclick = function() {
+        const form = document.getElementById('config-form');
+        const formData = new FormData(form);
+        // Deep copy config
+        let newConfig = JSON.parse(JSON.stringify(window._configData));
+        for (const [name, value] of formData.entries()) {
+            const [section, option] = name.split('__');
+            if (newConfig[section] && newConfig[section].__options__[option]) {
+                newConfig[section].__options__[option].value = value;
+            }
+        }
+        fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newConfig)
+        }).then(r => r.json()).then(resp => {
+            if (resp.success) {
+                showStatus('Configuration saved successfully!', 'success');
+                getConfig();
+            } else {
+                showStatus('Failed to save: ' + (resp.error || 'Unknown error'), 'danger');
+            }
+        }).catch(() => showStatus('Failed to save: network error', 'danger'));
+    };
+});
+</script>
 </div>
 </body>
 </html> 

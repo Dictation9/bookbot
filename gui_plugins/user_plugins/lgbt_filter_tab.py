@@ -29,6 +29,18 @@ def get_tab(parent):
         set_lgbt_filter_enabled(var.get())
     toggle = ctk.CTkCheckBox(frame, text="Enable LGBT Book Filtering", variable=var, command=on_toggle)
     toggle.pack(pady=10)
+
+    # Add Close button to return to Dashboard
+    def close_tab():
+        # Try to call select_frame_by_name on the parent (root window)
+        root = frame.master
+        while root.master is not None:
+            root = root.master
+        if hasattr(root, 'select_frame_by_name'):
+            root.select_frame_by_name('top_0')  # Assumes Dashboard is top_0
+    close_btn = ctk.CTkButton(frame, text="Close", command=close_tab)
+    close_btn.pack(pady=(20, 10))
+
     return {"name": "LGBT Filter", "frame": frame}
 
 # Helper for other plugins to use

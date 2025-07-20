@@ -122,7 +122,8 @@ def sample_stats():
             try:
                 for root, dirs, files in os.walk("/sys/class/hwmon"):
                     for file in files:
-                        if file.startswith("fan") and file.endswith("_input"):
+                        # Look for both "fan" and "pwmfan" files ending with "_input"
+                        if (file.startswith("fan") or file.startswith("pwmfan")) and file.endswith("_input"):
                             with open(os.path.join(root, file)) as f:
                                 fan_speed = int(f.read().strip())
                             break
@@ -180,7 +181,8 @@ def dashboard():
         try:
             for root, dirs, files in os.walk("/sys/class/hwmon"):
                 for file in files:
-                    if file.startswith("fan") and file.endswith("_input"):
+                    # Look for both "fan" and "pwmfan" files ending with "_input"
+                    if (file.startswith("fan") or file.startswith("pwmfan")) and file.endswith("_input"):
                         with open(os.path.join(root, file)) as f:
                             fan_speed = int(f.read().strip())
                         break

@@ -4,6 +4,7 @@ import requests
 import praw
 import logging
 import os
+os.makedirs("logs", exist_ok=True)
 try:
     import setproctitle
     setproctitle.setproctitle("bookbot")
@@ -29,12 +30,12 @@ except ImportError:
 import sys
 
 # Set up error logging
-logging.basicConfig(filename="error.log", level=logging.ERROR,
+logging.basicConfig(filename="logs/error.log", level=logging.ERROR,
                     format="%(asctime)s [%(levelname)s] %(message)s")
 # Set up activity logging
 activity_logger = logging.getLogger("bot_activity")
 activity_logger.setLevel(logging.INFO)
-activity_handler = logging.FileHandler("bot.log")
+activity_handler = logging.FileHandler("logs/bot.log")
 activity_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 activity_logger.addHandler(activity_handler)
 

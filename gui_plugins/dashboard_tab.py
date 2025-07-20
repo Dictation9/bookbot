@@ -198,18 +198,20 @@ class DashboardTab:
         self.log_textbox.see("end")
         self.log_textbox.configure(state="disabled")
     def run_update(self):
-        # Run manual_update.sh and refresh version/update status
+        # Open manual_update.sh in a new terminal for user interaction (macOS)
         import threading
         def do_update():
-            self.update_button.configure(state="disabled", text="Updating...")
+            self.update_button.configure(state="disabled", text="Launching...")
             try:
-                subprocess.check_call(["bash", "manual_update.sh"], cwd=os.path.dirname(os.path.dirname(__file__)))
+                # Path to the script
+                script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "manual_update.sh")
+                app_dir = os.path.dirname(os.path.dirname(__file__))
+                # Use osascript to open Terminal and run the script interactively
+                cmd = f'''osascript -e 'tell application "Terminal" to do script "cd {app_dir} && bash {script_path}"' '''
+                subprocess.Popen(cmd, shell=True)
             except Exception as e:
-                self.append_log(f"Update failed: {e}")
+                self.append_log(f"Failed to launch update terminal: {e}")
             self.update_button.configure(state="normal", text="Update Now")
-            self.refresh_version_and_update()
-            # Relaunch the GUI after update
-            os.execv(sys.executable, [sys.executable] + sys.argv)
         threading.Thread(target=do_update, daemon=True).start()
 
 def get_tab(parent):

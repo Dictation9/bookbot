@@ -10,11 +10,13 @@ from book_utils import extract_books, write_book_to_csv, activity_logger
 from bookbot import robust_lookup_open_library, lookup_romance_io, lookup_google_books
 import datetime
 import urllib.parse
+import os
 
 # Set up a separate logger for Bluesky post scans
+os.makedirs("logs", exist_ok=True)
 bluesky_post_logger = logging.getLogger("bluesky_post_scan")
 bluesky_post_logger.setLevel(logging.INFO)
-bluesky_log_handler = logging.FileHandler("bluesky.log")
+bluesky_log_handler = logging.FileHandler("logs/bluesky.log")
 bluesky_log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 if not bluesky_post_logger.hasHandlers():
     bluesky_post_logger.addHandler(bluesky_log_handler)

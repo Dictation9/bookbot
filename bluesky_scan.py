@@ -9,8 +9,35 @@ from atproto import Client
 from book_utils import extract_books, write_book_to_csv, activity_logger
 from bookbot import robust_lookup_open_library, lookup_romance_io, lookup_google_books
 import datetime
+import urllib.parse
 
 console = Console()
+
+def convert_bluesky_feed_url_to_aturi(feed_url, client):
+    """
+    Convert a Bluesky feed web URL to an AT-URI.
+    feed_url: str, e.g. https://bsky.app/profile/biblioqueer.bsky.social/feed/aaafcf5orer4q
+    client: atproto.Client instance (for handle resolution)
+    Returns: str (AT-URI) or raises Exception
+    """
+    parsed = urllib.parse.urlparse(feed_url)
+    path_parts = [p for p in parsed.path.split("/") if p]
+    # Looking for .../profile/<handle_or_did>/feed/<feed_id>
+    if "profile" in path_parts and "feed" in path_parts:
+        profile_idx = path_parts.index("profile")
+        handle_or_did = path_parts[profile_idx + 1]
+        feed_idx = path_parts.index("feed")
+        feed_id = path_parts[feed_idx + 1]
+        # If it's a DID, use directly
+        if handle_or_did.startswith("did:plc:"):
+            did = handle_or_did
+        else:
+            # Resolve handle to DID
+            resolved = client.resolve_handle(handle_or_did)
+            did = resolved.did
+        return f"at://{did}/app.bsky.feed.generator/{feed_id}"
+    else:
+        raise ValueError("URL does not contain expected /profile/<handle_or_did>/feed/<feed_id> structure")
 
 def run_bluesky_scan(config, emit_post_count=False):
     console.print("[cyan]🔎 Scanning Bluesky for book mentions...[/]")
@@ -45,10 +72,17 @@ def run_bluesky_scan(config, emit_post_count=False):
                 at_uri = feed
                 if feed.startswith("https://bsky.app/profile/"):
                     try:
-                        # Example: https://bsky.app/profile/biblioqueer.bsky.social/feed/aaafcf5orer4q
-                        parts = feed.split("/")
-                        handle = parts[5]
-                        feed_id = parts[7]
+                        # Robustly parse the URL
+                        parsed = urllib.parse.urlparse(feed)
+                        path_parts = [p for p in parsed.path.split("/") if p]
+                        # Looking for .../profile/<handle>/feed/<feed_id>
+                        if "profile" in path_parts and "feed" in path_parts:
+                            profile_idx = path_parts.index("profile")
+                            handle = path_parts[profile_idx + 1]
+                            feed_idx = path_parts.index("feed")
+                            feed_id = path_parts[feed_idx + 1]
+                        else:
+                            raise ValueError("URL does not contain expected /profile/<handle>/feed/<feed_id> structure")
                         # Resolve handle to DID
                         resolved = client.resolve_handle(handle)
                         did = resolved.did
@@ -200,4 +234,31 @@ def run_bluesky_scan(config, emit_post_count=False):
     if emit_post_count:
         print(f"[BLUESKY_DUPLICATES] {duplicate_count}")
         print(f"[BLUESKY_ADDED] {books_added}")
-        print(f"[BLUESKY_IGNORED] {books_ignored}") 
+        print(f"[BLUESKY_IGNORED] {books_ignored}")
+
+if __name__ == "__main__":
+    import sys
+    from atproto import Client
+    example_url = "https://bsky.app/profile/did:plc:6qswqt6prj5ch3jwjyqedexs/feed/aaafcf5orer4q"
+    if len(sys.argv) == 2:
+        feed_url = sys.argv[1]
+    else:
+        print("Usage: python bluesky_scan.py <bluesky_feed_url>")
+        print(f"Example: python bluesky_scan.py {example_url}")
+        feed_url = input(f"Enter a Bluesky feed URL to convert (or 'q' to quit): ").strip()
+        if feed_url.lower() in ('q', 'quit'):
+            sys.exit(0)
+    username = input("Bluesky username (handle): ")
+    password = input("Bluesky app password: ")
+    client = Client()
+    client.login(username, password)
+    while True:
+        try:
+            at_uri = convert_bluesky_feed_url_to_aturi(feed_url, client)
+            print(f"AT-URI: {at_uri}\n")
+        except Exception as e:
+            print(f"Error: {e}\n")
+        # Prompt for another
+        feed_url = input("Enter another Bluesky feed URL to convert (or 'q' to quit): ").strip()
+        if feed_url.lower() in ('q', 'quit'):
+            break 

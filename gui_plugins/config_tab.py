@@ -75,6 +75,9 @@ class ConfigTab:
         config = configparser.ConfigParser()
         config.read(CONFIG_PATH)
         row = 0
+        # Add a prominent warning about feed link conversion
+        ctk.CTkLabel(self.inner, text="IMPORTANT: Bluesky feed links must be converted to AT-URI format using the converter in the Bluesky Dashboard tab before running scans.", text_color="red", font=ctk.CTkFont(size=14, weight="bold"), wraplength=700, justify="left").grid(row=row, column=0, columnspan=2, sticky="w", pady=(10, 10))
+        row += 1
         for section in config.sections():
             ctk.CTkLabel(self.inner, text=f"[{section}]", text_color="black", font=ctk.CTkFont(weight="bold", size=15)).grid(row=row, column=0, sticky="w", pady=(10,2))
             row += 1

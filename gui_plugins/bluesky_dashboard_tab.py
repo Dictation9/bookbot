@@ -7,6 +7,8 @@ import os
 import sys
 import signal
 from gui_plugins.scrollable_frame import ScrollableFrame
+from bluesky_scan import convert_bluesky_feed_url_to_aturi
+from atproto import Client
 
 class BlueskyDashboardTab:
     def __init__(self, parent):
@@ -42,6 +44,25 @@ class BlueskyDashboardTab:
         self.log_textbox.configure(state="disabled")
         self.scan_thread = None
         self.bot_process = None
+
+        # --- Feed URL to AT-URI Converter ---
+        ctk.CTkLabel(inner, text="Convert Bluesky Feed URL to AT-URI", text_color="black", font=ctk.CTkFont(size=15, weight="bold")).pack(pady=(30, 5))
+        ctk.CTkLabel(inner, text="Paste a Bluesky feed link (e.g. https://bsky.app/profile/did:plc:6qswqt6prj5ch3jwjyqedexs/feed/aaafcf5orer4q)", text_color="black").pack()
+        self.feed_url_entry = ctk.CTkEntry(inner, width=600)
+        self.feed_url_entry.pack(pady=2)
+        ctk.CTkLabel(inner, text="Bluesky username (handle):", text_color="black").pack(pady=(10,0))
+        self.username_entry = ctk.CTkEntry(inner, width=300)
+        self.username_entry.pack(pady=2)
+        ctk.CTkLabel(inner, text="Bluesky app password:", text_color="black").pack(pady=(10,0))
+        self.password_entry = ctk.CTkEntry(inner, width=300, show="*")
+        self.password_entry.pack(pady=2)
+        self.convert_button = ctk.CTkButton(inner, text="Convert to AT-URI", command=self.convert_feed_url, text_color="black")
+        self.convert_button.pack(pady=8)
+        self.aturi_result_entry = ctk.CTkEntry(inner, width=600, state="readonly")
+        self.aturi_result_entry.pack(pady=2)
+        self.converter_status_label = ctk.CTkLabel(inner, text="", text_color="red")
+        self.converter_status_label.pack(pady=(0, 10))
+
     def start_scan(self):
         if self.scan_thread and self.scan_thread.is_alive():
             return
@@ -123,6 +144,28 @@ class BlueskyDashboardTab:
         self.log_textbox.insert("end", message + "\n")
         self.log_textbox.see("end")
         self.log_textbox.configure(state="disabled")
+
+    def convert_feed_url(self):
+        url = self.feed_url_entry.get().strip()
+        username = self.username_entry.get().strip()
+        password = self.password_entry.get().strip()
+        self.converter_status_label.configure(text="")
+        self.aturi_result_entry.configure(state="normal")
+        self.aturi_result_entry.delete(0, "end")
+        if not url or not username or not password:
+            self.converter_status_label.configure(text="Please fill in all fields.")
+            self.aturi_result_entry.configure(state="readonly")
+            return
+        try:
+            client = Client()
+            client.login(username, password)
+            aturi = convert_bluesky_feed_url_to_aturi(url, client)
+            self.aturi_result_entry.insert(0, aturi)
+            self.aturi_result_entry.configure(state="readonly")
+            self.converter_status_label.configure(text="Conversion successful!", text_color="green")
+        except Exception as e:
+            self.converter_status_label.configure(text=f"Error: {e}", text_color="red")
+            self.aturi_result_entry.configure(state="readonly")
 
 def get_tab(parent):
     tab = BlueskyDashboardTab(parent)

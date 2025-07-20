@@ -16,6 +16,15 @@ class BookBotGUI(ctk.CTk):
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
+        # --- Loading Bar ---
+        self.loading_bar = ctk.CTkProgressBar(self, mode="indeterminate")
+        self.loading_bar.grid(row=0, column=0, columnspan=2, sticky="ew", padx=40, pady=30)
+        self.loading_bar.start()
+        self.update_idletasks()
+        # Loading status label
+        self.loading_label = ctk.CTkLabel(self, text="Loading dashboards...", font=ctk.CTkFont(size=15), text_color="gray")
+        self.loading_label.grid(row=1, column=0, columnspan=2, sticky="ew")
+
         # --- Navigation Frame ---
         self.nav_frame = ctk.CTkFrame(self, width=200, corner_radius=0)
         self.nav_frame.grid(row=0, column=0, sticky="nsew")
@@ -29,6 +38,13 @@ class BookBotGUI(ctk.CTk):
         self.plugin_frames = []
         self.load_plugins()
 
+        # Remove loading bar and label after plugins are loaded
+        self.loading_bar.stop()
+        self.loading_bar.grid_forget()
+        self.loading_bar = None
+        self.loading_label.grid_forget()
+        self.loading_label = None
+
         # Select the first plugin tab by default if any
         if self.plugin_tabs:
             self.select_frame_by_name("plugin_0")
@@ -40,6 +56,9 @@ class BookBotGUI(ctk.CTk):
             tabs = []
             for fname in os.listdir(plugins_dir):
                 if fname.endswith('.py') and fname != '__init__.py':
+                    # Update loading label with current dashboard/plugin name
+                    self.loading_label.configure(text=f"Loading: {fname}")
+                    self.update_idletasks()
                     plugin_path = os.path.join(plugins_dir, fname)
                     spec = importlib.util.spec_from_file_location(fname[:-3], plugin_path)
                     if spec and spec.loader:

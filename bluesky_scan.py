@@ -41,7 +41,23 @@ def run_bluesky_scan(config, emit_post_count=False):
         for feed in feeds:
             try:
                 console.print(f"[blue]Scanning Bluesky feed: {feed}[/]")
-                feed_result = client.app.bsky.feed.get_feed({'feed': feed})
+                # If feed is a web URL, convert to AT-URI
+                at_uri = feed
+                if feed.startswith("https://bsky.app/profile/"):
+                    try:
+                        # Example: https://bsky.app/profile/biblioqueer.bsky.social/feed/aaafcf5orer4q
+                        parts = feed.split("/")
+                        handle = parts[5]
+                        feed_id = parts[7]
+                        # Resolve handle to DID
+                        resolved = client.resolve_handle(handle)
+                        did = resolved.did
+                        at_uri = f"at://{did}/app.bsky.feed.generator/{feed_id}"
+                    except Exception as e:
+                        console.print(f"[yellow]Failed to parse or resolve feed URL {feed}: {e}[/]")
+                        activity_logger.warning(f"Failed to parse or resolve feed URL {feed}: {e}")
+                        continue
+                feed_result = client.app.bsky.feed.get_feed({'feed': at_uri})
                 post_count = len(feed_result.feed)
                 if emit_post_count:
                     print(f"[BLUESKY_POST_COUNT] {post_count}")

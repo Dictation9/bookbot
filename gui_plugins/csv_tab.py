@@ -2,6 +2,7 @@ import customtkinter as ctk
 import csv
 import os
 from gui_plugins.scrollable_frame import ScrollableFrame
+from gui_plugins.user_plugins.lgbt_filter_tab import is_lgbt_filter_enabled, LGBT_TAGS
 
 CSV_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "book_mentions.csv")
 DEFAULT_COLUMNS = [
@@ -23,6 +24,7 @@ class CSVTab:
         self.column_dropdowns = [] # For dropdown widgets
         self.column_selector_frame = None
         self.pagination_frame = None
+        self.lgbt_filter_var = ctk.BooleanVar(value=is_lgbt_filter_enabled())
         self.load_csv(initial=True)
 
     def load_csv(self, initial=False):
@@ -43,13 +45,18 @@ class CSVTab:
         else:
             self.header = DEFAULT_COLUMNS
             self.rows = []
+        # LGBT filter UI
+        filter_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
+        filter_frame.grid(row=0, column=0, columnspan=10, sticky="w", pady=(0, 5))
+        filter_checkbox = ctk.CTkCheckBox(filter_frame, text="Show only LGBT books", variable=self.lgbt_filter_var, command=self.load_csv)
+        filter_checkbox.pack(side="left", padx=(0, 10))
         # Setup column selection (dropdowns for each slot)
         if initial or not self.current_columns:
             self.current_columns = list(range(min(5, len(self.header))))
         if self.column_selector_frame:
             self.column_selector_frame.destroy()
         self.column_selector_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
-        self.column_selector_frame.grid(row=0, column=0, columnspan=10, sticky="w", pady=(0, 5))
+        self.column_selector_frame.grid(row=1, column=0, columnspan=10, sticky="w", pady=(0, 5))
         ctk.CTkLabel(self.column_selector_frame, text="Select columns to display:", text_color="black").pack(side="left", padx=(0, 10))
         self.column_dropdowns = []
         for slot in range(5):
@@ -65,22 +72,33 @@ class CSVTab:
         if self.pagination_frame:
             self.pagination_frame.destroy()
         self.pagination_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
-        self.pagination_frame.grid(row=1, column=0, columnspan=10, sticky="w", pady=(0, 5))
+        self.pagination_frame.grid(row=2, column=0, columnspan=10, sticky="w", pady=(0, 5))
         prev_btn = ctk.CTkButton(self.pagination_frame, text="Prev", command=self.prev_page, text_color="black")
         prev_btn.pack(side="left", padx=2)
         page_label = ctk.CTkLabel(self.pagination_frame, text=f"Page {self.current_page+1}", text_color="black")
         page_label.pack(side="left", padx=5)
         next_btn = ctk.CTkButton(self.pagination_frame, text="Next", command=self.next_page, text_color="black")
         next_btn.pack(side="left", padx=2)
+        # LGBT filter logic
+        def is_lgbt_row(row):
+            try:
+                tags_idx = self.header.index("tags")
+                tags = row[tags_idx].lower().split(',') if row[tags_idx] else []
+                return any(tag.strip() in LGBT_TAGS for tag in tags)
+            except Exception:
+                return False
+        filtered_rows = self.rows
+        if self.lgbt_filter_var.get():
+            filtered_rows = [row for row in self.rows if is_lgbt_row(row)]
         # Display selected columns and paginated rows
         display_columns = [var.get() for var in self.column_dropdowns if var.get() in self.header]
         display_indices = [self.header.index(col) for col in display_columns if col in self.header]
         start_row = self.current_page * 15
         end_row = start_row + 15
-        display_rows = self.rows[start_row:end_row]
+        display_rows = filtered_rows[start_row:end_row]
         # Header row
         for col, name in enumerate(display_columns):
-            ctk.CTkLabel(self.inner, text=name, text_color="black", font=ctk.CTkFont(weight="bold")).grid(row=2, column=col, padx=2, pady=2)
+            ctk.CTkLabel(self.inner, text=name, text_color="black", font=ctk.CTkFont(weight="bold")).grid(row=3, column=col, padx=2, pady=2)
         # Data rows
         for r, row in enumerate(display_rows):
             row_entries = []
@@ -88,18 +106,20 @@ class CSVTab:
                 value = row[col_idx] if col_idx < len(row) else ""
                 e = ctk.CTkEntry(self.inner, width=120)
                 e.insert(0, value)
-                e.grid(row=r+3, column=c, padx=2, pady=2)
+                e.grid(row=r+4, column=c, padx=2, pady=2)
                 row_entries.append(e)
             self.entries.append(row_entries)
-        # Place Save/Reload buttons at the next available row
+        # Place Save/Reload/Export buttons at the next available row
         btn_frame = ctk.CTkFrame(self.inner, fg_color="transparent")
-        btn_frame.grid(row=len(display_rows)+3, column=0, columnspan=len(display_columns) if display_columns else 1, pady=10, sticky="w")
+        btn_frame.grid(row=len(display_rows)+4, column=0, columnspan=len(display_columns) if display_columns else 1, pady=10, sticky="w")
         self.save_button = ctk.CTkButton(btn_frame, text="Save Changes", command=self.save_csv, text_color="black")
         self.save_button.pack(side="left", padx=10)
         self.reload_button = ctk.CTkButton(btn_frame, text="Reload", command=self.reload_csv, text_color="black")
         self.reload_button.pack(side="left", padx=10)
+        self.export_button = ctk.CTkButton(btn_frame, text="Export with LGBT Column", command=self.export_csv_with_lgbt, text_color="black")
+        self.export_button.pack(side="left", padx=10)
         self.status_label = ctk.CTkLabel(self.inner, text="", text_color="green")
-        self.status_label.grid(row=len(display_rows)+4, column=0, columnspan=len(display_columns) if display_columns else 1, pady=(0, 10), sticky="w")
+        self.status_label.grid(row=len(display_rows)+5, column=0, columnspan=len(display_columns) if display_columns else 1, pady=(0, 10), sticky="w")
 
     def update_columns_dropdown(self, slot, value):
         # Prevent duplicate columns
@@ -151,4 +171,24 @@ class CSVTab:
 
     def reload_csv(self):
         self.current_page = 0
-        self.load_csv(initial=True) 
+        self.load_csv(initial=True)
+
+    def export_csv_with_lgbt(self):
+        # Export CSV with an extra 'is_lgbt' column
+        export_path = os.path.join(os.path.dirname(CSV_PATH), "book_mentions_with_lgbt.csv")
+        header_with_lgbt = self.header + ["is_lgbt"]
+        def is_lgbt_row(row):
+            try:
+                tags_idx = self.header.index("tags")
+                tags = row[tags_idx].lower().split(',') if row[tags_idx] else []
+                return any(tag.strip() in LGBT_TAGS for tag in tags)
+            except Exception:
+                return False
+        with open(export_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(header_with_lgbt)
+            for row in self.rows:
+                lgbt_val = "yes" if is_lgbt_row(row) else "no"
+                writer.writerow(row + [lgbt_val])
+        self.status_label.configure(text=f"Exported to {export_path}")
+        self.status_label.after(5000, lambda: self.status_label.configure(text="")) 

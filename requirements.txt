@@ -4,3 +4,4 @@ rich
 beautifulsoup4
 setproctitle
 customtkinter
+atproto

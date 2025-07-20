@@ -21,6 +21,11 @@ from handlers.romance_bot_handler import is_romance_bot, handle_romance_bot_comm
 from book_utils import extract_books, update_csv_with_romance_bot, write_book_to_csv, activity_logger
 from handlers.curly_bracket_handler import is_curly_bracket_comment, handle_curly_bracket_comment
 from handlers.csv_double_check_handler import run_csv_double_check
+# Add import for Bluesky scanning (to be implemented)
+try:
+    from bluesky_scan import run_bluesky_scan
+except ImportError:
+    run_bluesky_scan = None
 
 # Set up error logging
 logging.basicConfig(filename="error.log", level=logging.ERROR,
@@ -485,6 +490,13 @@ def main():
     )
     
     run_scan_and_enrich(reddit)
+    
+    # Bluesky scan if enabled
+    if config.has_section('bluesky') and config['bluesky'].get('scan_enabled', 'false').strip().lower() == 'true':
+        if run_bluesky_scan:
+            run_bluesky_scan(config)
+        else:
+            console.print("[yellow]Bluesky scanning is enabled in config, but bluesky_scan module is missing.[/]")
     
     # After the scan, send a final email if enabled.
     # For continuous, scheduled checks, run scheduled_check.py via cron.

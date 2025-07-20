@@ -258,6 +258,13 @@ restart_app() {
     print_status "Check logs with: tail -f bookbot.log"
 }
 
+start_gui() {
+    print_status "Starting Bookbot GUI..."
+    nohup python3 gui.py > gui.log 2>&1 &
+    print_status "GUI started successfully!"
+    print_status "Check logs with: tail -f gui.log"
+}
+
 setup_autostart() {
     print_status "Setting up Bookbot to start on boot..."
     CURRENT_DIR=$(pwd)
@@ -387,13 +394,14 @@ show_menu() {
     echo "4) Full update (dependencies + code + system)"
     echo "5) Restart application"
     echo "6) Stop application"
-    echo "7) Show current status"
-    echo "8) Setup autostart (start on boot)"
-    echo "9) Remove autostart"
-    echo "10) 🚨 HARD RESET (delete everything & fresh install)"
-    echo "11) Exit"
+    echo "7) Start GUI"
+    echo "8) Show current status"
+    echo "9) Setup autostart (start on boot)"
+    echo "10) Remove autostart"
+    echo "11) 🚨 HARD RESET (delete everything & fresh install)"
+    echo "12) Exit"
     echo ""
-    read -p "Select an option (1-11): " choice
+    read -p "Select an option (1-12): " choice
 }
 
 show_status() {
@@ -445,7 +453,6 @@ main() {
         update_dependencies
         update_code
         update_system
-        restart_app
         exit 0
     elif [ "$1" = "--restart" ]; then
         restart_app
@@ -465,6 +472,9 @@ main() {
     elif [ "$1" = "--hard-reset" ]; then
         hard_reset
         exit 0
+    elif [ "$1" = "--gui" ]; then
+        start_gui
+        exit 0
     elif [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
         echo "Usage: $0 [OPTION]"
         echo ""
@@ -479,6 +489,7 @@ main() {
         echo "  --autostart         Setup autostart (start on boot)"
         echo "  --remove-autostart  Remove autostart configuration"
         echo "  --hard-reset        🚨 Delete everything and perform fresh install"
+        echo "  --gui               Start the Bookbot GUI"
         echo "  --help              Show this help message"
         echo ""
         echo "If no option is provided, an interactive menu will be shown."
@@ -503,7 +514,6 @@ main() {
                 update_dependencies
                 update_code
                 update_system
-                restart_app
                 ;;
             5)
                 restart_app
@@ -512,23 +522,26 @@ main() {
                 stop_app
                 ;;
             7)
-                show_status
+                start_gui
                 ;;
             8)
-                setup_autostart
+                show_status
                 ;;
             9)
-                remove_autostart
+                setup_autostart
                 ;;
             10)
-                hard_reset
+                remove_autostart
                 ;;
             11)
+                hard_reset
+                ;;
+            12)
                 print_status "Exiting..."
                 exit 0
                 ;;
             *)
-                print_error "Invalid option. Please select 1-11."
+                print_error "Invalid option. Please select 1-12."
                 ;;
         esac
         echo ""

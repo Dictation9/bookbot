@@ -119,16 +119,7 @@ def sample_stats():
                         temp = int(f.read()) / 1000.0
             except Exception:
                 temp = None
-            try:
-                for root, dirs, files in os.walk("/sys/class/hwmon"):
-                    for file in files:
-                        # Look for both "fan" and "pwmfan" files ending with "_input"
-                        if (file.startswith("fan") or file.startswith("pwmfan")) and file.endswith("_input"):
-                            with open(os.path.join(root, file)) as f:
-                                fan_speed = int(f.read().strip())
-                            break
-            except Exception:
-                fan_speed = None
+            fan_speed = get_fan_speed()
         stat = {
             'timestamp': int(time.time()),
             'cpu_percent': cpu_percent,
@@ -148,6 +139,122 @@ def sample_stats():
 
 # Start background sampling thread
 threading.Thread(target=sample_stats, daemon=True).start()
+
+def get_fan_speed():
+    """
+    Comprehensive fan speed detection for Raspberry Pi 5.
+    Looks in multiple possible locations for fan data.
+    """
+    fan_speed = None
+    
+    # Method 1: Raspberry Pi 5 specific cooling fan path
+    try:
+        for root, dirs, files in os.walk("/sys/devices/platform/cooling_fan/hwmon"):
+            for file in files:
+                if file.startswith("fan") and file.endswith("_input"):
+                    with open(os.path.join(root, file)) as f:
+                        fan_speed = int(f.read().strip())
+                    if fan_speed:
+                        return fan_speed
+    except Exception:
+        pass
+    
+    # Method 2: Look for fan files in /sys/class/hwmon
+    try:
+        for root, dirs, files in os.walk("/sys/class/hwmon"):
+            for file in files:
+                # Look for various fan file patterns
+                if (file.startswith("fan") or file.startswith("pwmfan")) and file.endswith("_input"):
+                    with open(os.path.join(root, file)) as f:
+                        fan_speed = int(f.read().strip())
+                    if fan_speed:
+                        return fan_speed
+    except Exception:
+        pass
+    
+    # Method 3: Look for PWM fan control files
+    try:
+        for root, dirs, files in os.walk("/sys/class/hwmon"):
+            for file in files:
+                if file.startswith("pwm") and file.endswith("_input"):
+                    with open(os.path.join(root, file)) as f:
+                        fan_speed = int(f.read().strip())
+                    if fan_speed:
+                        return fan_speed
+    except Exception:
+        pass
+    
+    # Method 3.5: Look for PWM control files (0-255 range)
+    try:
+        for root, dirs, files in os.walk("/sys/class/hwmon"):
+            for file in files:
+                if file.startswith("pwm") and not file.endswith("_input"):
+                    # PWM files without _input are typically 0-255 range
+                    with open(os.path.join(root, file)) as f:
+                        pwm_value = int(f.read().strip())
+                    if pwm_value > 0:
+                        # Convert PWM value (0-255) to RPM estimate
+                        # This is approximate - actual RPM depends on fan specs
+                        fan_speed = int((pwm_value / 255.0) * 2500)  # Assume max 2500 RPM
+                        return fan_speed
+    except Exception:
+        pass
+    
+    # Method 3.6: Check specific Raspberry Pi 5 PWM path
+    try:
+        pwm_file = "/sys/class/hwmon/hwmon1/pwm1"
+        if os.path.exists(pwm_file):
+            with open(pwm_file) as f:
+                pwm_value = int(f.read().strip())
+            if pwm_value > 0:
+                # Convert PWM value (0-255) to RPM estimate
+                fan_speed = int((pwm_value / 255.0) * 2500)  # Assume max 2500 RPM
+                return fan_speed
+    except Exception:
+        pass
+    
+    # Method 4: Look for fan files in /sys/devices/platform
+    try:
+        for root, dirs, files in os.walk("/sys/devices/platform"):
+            for file in files:
+                if (file.startswith("fan") or file.startswith("pwm")) and file.endswith("_input"):
+                    with open(os.path.join(root, file)) as f:
+                        fan_speed = int(f.read().strip())
+                    if fan_speed:
+                        return fan_speed
+    except Exception:
+        pass
+    
+    # Method 5: Look for thermal zone fan files
+    try:
+        for i in range(10):  # Check thermal zones 0-9
+            fan_file = f"/sys/class/thermal/thermal_zone{i}/fan_input"
+            if os.path.exists(fan_file):
+                with open(fan_file) as f:
+                    fan_speed = int(f.read().strip())
+                if fan_speed:
+                    return fan_speed
+    except Exception:
+        pass
+    
+    # Method 6: Try to read from PWM device directly (if using gpiozero)
+    try:
+        if PWMOutputDevice:
+            # Try common PWM pins for fan control
+            for pin in [12, 13, 18, 19]:  # Common PWM pins
+                try:
+                    fan = PWMOutputDevice(pin)
+                    if fan.value > 0:
+                        # Convert PWM value (0-1) to RPM estimate
+                        # This is approximate - actual RPM depends on fan specs
+                        fan_speed = int(fan.value * 2500)  # Assume max 2500 RPM
+                        return fan_speed
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    
+    return None
 
 @app.route('/')
 def dashboard():
@@ -178,16 +285,7 @@ def dashboard():
         # except Exception:
         #     fan_speed = None
         # Alternatively, try to read from /sys/class/hwmon/hwmon*/fan*_input
-        try:
-            for root, dirs, files in os.walk("/sys/class/hwmon"):
-                for file in files:
-                    # Look for both "fan" and "pwmfan" files ending with "_input"
-                    if (file.startswith("fan") or file.startswith("pwmfan")) and file.endswith("_input"):
-                        with open(os.path.join(root, file)) as f:
-                            fan_speed = int(f.read().strip())
-                        break
-        except Exception:
-            fan_speed = None
+        fan_speed = get_fan_speed()
     return render_template(
         'dashboard.html',
         cpu_percent=cpu_percent,

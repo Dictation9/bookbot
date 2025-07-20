@@ -41,7 +41,7 @@ def run_bluesky_scan(config, emit_post_count=False):
         for feed in feeds:
             try:
                 console.print(f"[blue]Scanning Bluesky feed: {feed}[/]")
-                feed_result = client.get_feed(feed=feed)
+                feed_result = client.app.bsky.feed.get_feed({'feed': feed})
                 post_count = len(feed_result.feed)
                 if emit_post_count:
                     print(f"[BLUESKY_POST_COUNT] {post_count}")

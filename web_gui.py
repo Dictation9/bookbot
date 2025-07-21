@@ -159,6 +159,18 @@ def get_fan_speed():
     except Exception:
         pass
     
+    # Method 1.2: Raspberry Pi 5 specific cooling fan path
+    try:
+        for root, dirs, files in os.walk("/sys/devices/platform/cooling_fan/hwmon/*"):
+            for file in files:
+                if file.startswith("fan") and file.endswith("_input"):
+                    with open(os.path.join(root, file)) as f:
+                        fan_speed = int(f.read().strip())
+                    if fan_speed:
+                        return fan_speed
+    except Exception:
+        pass
+
     # Method 2: Look for fan files in /sys/class/hwmon
     try:
         for root, dirs, files in os.walk("/sys/class/hwmon"):

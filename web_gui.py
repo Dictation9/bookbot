@@ -268,6 +268,87 @@ def get_fan_speed():
     
     return 0
 
+# --- Reddit Scan Process Management ---
+reddit_scan_process = None
+reddit_scan_log = []
+reddit_scan_status = 'Idle'
+reddit_scan_status_color = ''
+reddit_last_scan = None
+reddit_log_lock = threading.Lock()
+
+def run_reddit_scan_subprocess():
+    global reddit_scan_process, reddit_scan_log, reddit_scan_status, reddit_scan_status_color, reddit_last_scan
+    reddit_scan_status = 'Running'
+    reddit_scan_status_color = 'green'
+    reddit_scan_log = []
+    bot_path = os.path.join(os.path.dirname(__file__), 'bookbot.py')
+    process = subprocess.Popen(
+        [sys.executable, bot_path, '--reddit-only'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        cwd=os.path.dirname(__file__),
+        text=True,
+        bufsize=1
+    )
+    reddit_scan_process = process
+    try:
+        for line in process.stdout:
+            with reddit_log_lock:
+                reddit_scan_log.append(line.rstrip())
+                if len(reddit_scan_log) > 500:
+                    reddit_scan_log = reddit_scan_log[-500:]
+        process.wait()
+        reddit_last_scan = time.strftime('%Y-%m-%d %H:%M:%S')
+        if process.returncode == 0:
+            reddit_scan_status = 'Complete'
+            reddit_scan_status_color = 'blue'
+        else:
+            reddit_scan_status = 'Error'
+            reddit_scan_status_color = 'red'
+    except Exception as e:
+        with reddit_log_lock:
+            reddit_scan_log.append(f'Reddit scan error: {e}')
+        reddit_scan_status = 'Error'
+        reddit_scan_status_color = 'red'
+    finally:
+        reddit_scan_process = None
+
+@app.route('/api/start_reddit_scan', methods=['POST'])
+def api_start_reddit_scan():
+    global reddit_scan_process
+    if reddit_scan_process and reddit_scan_process.poll() is None:
+        return jsonify({'success': False, 'error': 'Scan already running'})
+    t = threading.Thread(target=run_reddit_scan_subprocess, daemon=True)
+    t.start()
+    return jsonify({'success': True})
+
+@app.route('/api/stop_reddit_scan', methods=['POST'])
+def api_stop_reddit_scan():
+    global reddit_scan_process, reddit_scan_status, reddit_scan_status_color
+    if reddit_scan_process and reddit_scan_process.poll() is None:
+        try:
+            reddit_scan_process.terminate()
+            reddit_scan_status = 'Stopped'
+            reddit_scan_status_color = 'orange'
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': True})
+    else:
+        reddit_scan_status = 'Idle'
+        reddit_scan_status_color = ''
+        return jsonify({'success': False, 'error': 'No scan running'})
+
+@app.route('/api/reddit_scan_log')
+def api_reddit_scan_log():
+    with reddit_log_lock:
+        log = '\n'.join(reddit_scan_log)
+    return jsonify({
+        'log': log,
+        'status': reddit_scan_status,
+        'status_color': reddit_scan_status_color,
+        'last_scan': reddit_last_scan
+    })
+
 @app.route('/')
 def dashboard():
     # Gather system stats

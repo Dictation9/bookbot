@@ -16,8 +16,10 @@
     <div class="mt-3">
         <h2>Bot Scanner</h2>
         <div class="mb-3">
-            <button id="startScanBtn" class="btn btn-success me-2">Start Bluesky Scan</button>
-            <button id="stopScanBtn" class="btn btn-danger me-2" disabled>Stop Scan</button>
+            <button id="startBlueskyScanBtn" class="btn btn-success me-2">Start Bluesky Scan</button>
+            <button id="stopBlueskyScanBtn" class="btn btn-danger me-2" disabled>Stop Bluesky Scan</button>
+            <button id="startRedditScanBtn" class="btn btn-primary me-2">Start Reddit Scan</button>
+            <button id="stopRedditScanBtn" class="btn btn-warning me-2" disabled>Stop Reddit Scan</button>
             <span id="scanStatus" class="ms-3">Status: Idle</span>
         </div>
         <div class="mb-2">
@@ -33,18 +35,28 @@
             <label for="logOutput" class="form-label">Bluesky Log Output:</label>
             <pre id="logOutput" style="background:#222; color:#eee; padding:1em; border-radius:6px; max-height:300px; overflow:auto; font-size:13px;"></pre>
         </div>
+        <div class="mb-3">
+            <label for="redditLogOutput" class="form-label">Reddit Log Output:</label>
+            <pre id="redditLogOutput" style="background:#222; color:#eee; padding:1em; border-radius:6px; max-height:300px; overflow:auto; font-size:13px;"></pre>
+        </div>
     </div>
     <script>
-    let scanRunning = false;
-    let scanLogInterval = null;
+    let blueskyScanRunning = false;
+    let blueskyScanLogInterval = null;
+    let redditScanRunning = false;
+    let redditScanLogInterval = null;
     function updateScanStatus(status, color) {
         const el = document.getElementById('scanStatus');
         el.textContent = 'Status: ' + status;
         el.style.color = color || '';
     }
-    function setScanButtons(running) {
-        document.getElementById('startScanBtn').disabled = running;
-        document.getElementById('stopScanBtn').disabled = !running;
+    function setBlueskyScanButtons(running) {
+        document.getElementById('startBlueskyScanBtn').disabled = running;
+        document.getElementById('stopBlueskyScanBtn').disabled = !running;
+    }
+    function setRedditScanButtons(running) {
+        document.getElementById('startRedditScanBtn').disabled = running;
+        document.getElementById('stopRedditScanBtn').disabled = !running;
     }
     function fetchScanLog() {
         fetch('/api/bluesky_scan_log').then(r => r.json()).then(data => {
@@ -57,29 +69,59 @@
             if (data.books_ignored !== undefined) document.getElementById('booksIgnored').textContent = 'Books ignored: ' + data.books_ignored;
         });
     }
-    document.getElementById('startScanBtn').addEventListener('click', function() {
+    function fetchRedditScanLog() {
+        fetch('/api/reddit_scan_log').then(r => r.json()).then(data => {
+            document.getElementById('redditLogOutput').textContent = data.log || '';
+            // Optionally update status for Reddit scan
+            // if (data.status) updateScanStatus(data.status, data.status_color);
+            // if (data.last_scan) ...
+        });
+    }
+    document.getElementById('startBlueskyScanBtn').addEventListener('click', function() {
         fetch('/api/start_bluesky_scan', {method: 'POST'}).then(r => r.json()).then(data => {
             if (data.success) {
-                scanRunning = true;
-                setScanButtons(true);
-                updateScanStatus('Running', 'green');
-                scanLogInterval = setInterval(fetchScanLog, 2000);
+                blueskyScanRunning = true;
+                setBlueskyScanButtons(true);
+                updateScanStatus('Bluesky Running', 'green');
+                blueskyScanLogInterval = setInterval(fetchScanLog, 2000);
             } else {
-                updateScanStatus('Failed to start', 'red');
+                updateScanStatus('Failed to start Bluesky', 'red');
             }
         });
     });
-    document.getElementById('stopScanBtn').addEventListener('click', function() {
+    document.getElementById('stopBlueskyScanBtn').addEventListener('click', function() {
         fetch('/api/stop_bluesky_scan', {method: 'POST'}).then(r => r.json()).then(data => {
-            scanRunning = false;
-            setScanButtons(false);
-            updateScanStatus('Stopped', 'orange');
-            if (scanLogInterval) clearInterval(scanLogInterval);
+            blueskyScanRunning = false;
+            setBlueskyScanButtons(false);
+            updateScanStatus('Bluesky Stopped', 'orange');
+            if (blueskyScanLogInterval) clearInterval(blueskyScanLogInterval);
             fetchScanLog();
+        });
+    });
+    document.getElementById('startRedditScanBtn').addEventListener('click', function() {
+        fetch('/api/start_reddit_scan', {method: 'POST'}).then(r => r.json()).then(data => {
+            if (data.success) {
+                redditScanRunning = true;
+                setRedditScanButtons(true);
+                updateScanStatus('Reddit Running', 'blue');
+                redditScanLogInterval = setInterval(fetchRedditScanLog, 2000);
+            } else {
+                updateScanStatus('Failed to start Reddit', 'red');
+            }
+        });
+    });
+    document.getElementById('stopRedditScanBtn').addEventListener('click', function() {
+        fetch('/api/stop_reddit_scan', {method: 'POST'}).then(r => r.json()).then(data => {
+            redditScanRunning = false;
+            setRedditScanButtons(false);
+            updateScanStatus('Reddit Stopped', 'orange');
+            if (redditScanLogInterval) clearInterval(redditScanLogInterval);
+            fetchRedditScanLog();
         });
     });
     // Initial fetch
     fetchScanLog();
+    fetchRedditScanLog();
     </script>
 </div>
 </body>

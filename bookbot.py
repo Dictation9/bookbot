@@ -503,21 +503,28 @@ def main():
             console.print("[yellow]Bluesky scanning is not enabled in config.[/]")
         return
 
+    # If --reddit-only is passed, only run Reddit scan
+    if len(sys.argv) > 1 and sys.argv[1] == "--reddit-only":
+        reddit = praw.Reddit(
+            client_id=REDDIT_CLIENT_ID,
+            client_secret=REDDIT_SECRET,
+            user_agent=REDDIT_USER_AGENT
+        )
+        run_scan_and_enrich(reddit)
+        return
+
     reddit = praw.Reddit(
         client_id=REDDIT_CLIENT_ID,
         client_secret=REDDIT_SECRET,
         user_agent=REDDIT_USER_AGENT
     )
-    
     run_scan_and_enrich(reddit)
-    
     # Bluesky scan if enabled
     if config.has_section('bluesky') and config['bluesky'].get('scan_enabled', 'false').strip().lower() == 'true':
         if run_bluesky_scan:
             run_bluesky_scan(config)
         else:
             console.print("[yellow]Bluesky scanning is enabled in config, but bluesky_scan module is missing.[/]")
-    
     # After the scan, send a final email if enabled.
     # For continuous, scheduled checks, run scheduled_check.py via cron.
     if SEND_CSV_EMAIL:

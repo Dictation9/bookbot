@@ -266,7 +266,7 @@ def get_fan_speed():
     except Exception:
         pass
     
-    return None
+    return 0
 
 @app.route('/')
 def dashboard():

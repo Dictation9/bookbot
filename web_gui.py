@@ -283,7 +283,7 @@ def run_reddit_scan_subprocess():
     reddit_scan_log = []
     bot_path = os.path.join(os.path.dirname(__file__), 'bookbot.py')
     process = subprocess.Popen(
-        [sys.executable, bot_path, '--reddit-only'],
+        ['python3', bot_path, '--reddit-only'],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         cwd=os.path.dirname(__file__),

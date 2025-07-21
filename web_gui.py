@@ -469,4 +469,13 @@ def api_bluesky_scan_log():
     })
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", debug=True, port=6000) 
+    # Read port from config.ini
+    config_path = os.path.join(os.path.dirname(__file__), 'config.ini')
+    config = configparser.ConfigParser()
+    config.optionxform = str
+    config.read(config_path)
+    try:
+        port = int(config.get('general', 'web_gui_port', fallback='6000'))
+    except Exception:
+        port = 6000
+    app.run(host="0.0.0.0", debug=True, port=port) 

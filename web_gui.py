@@ -310,8 +310,14 @@ def dashboard():
 
 @app.route('/api/stats')
 def api_stats():
+    window = request.args.get('window', default=None, type=int)
     with stats_lock:
-        return jsonify(stats_history)
+        if window is not None:
+            cutoff = int(time.time()) - (window * 60)
+            filtered = [s for s in stats_history if s['timestamp'] >= cutoff]
+            return jsonify(filtered)
+        else:
+            return jsonify(stats_history)
 
 @app.route('/api/book_mentions')
 def api_book_mentions():

@@ -8,13 +8,23 @@
 <div class="container mt-4">
     <ul class="nav nav-tabs">
         <li class="nav-item"><a class="nav-link active" href="/">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="/admin">Admin</a></li>
+        <li class="nav-item"><a class="nav-link" href="/admin">Bot Scanner</a></li>
         <li class="nav-item"><a class="nav-link" href="/config">Config</a></li>
         <li class="nav-item"><a class="nav-link" href="/csv">CSV</a></li>
         <li class="nav-item"><a class="nav-link" href="/log">Log</a></li>
     </ul>
     <div class="mt-3">
         <h2>System Dashboard</h2>
+        <div class="row mb-2">
+    <div class="col-md-3">
+        <label for="windowSelect" class="form-label"><strong>Graph Window:</strong></label>
+        <select id="windowSelect" class="form-select">
+            <option value="1">1 minute</option>
+            <option value="5">5 minutes</option>
+            <option value="10" selected>10 minutes</option>
+        </select>
+    </div>
+</div>
         <div class="row">
             <div class="col-md-6">
                 <ul class="list-group">
@@ -50,8 +60,13 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
     let chart;
+    let currentWindow = 10;
+    document.getElementById('windowSelect').addEventListener('change', function() {
+        currentWindow = parseInt(this.value);
+        fetchAndUpdateChart();
+    });
     function fetchAndUpdateChart() {
-        fetch('/api/stats').then(r => r.json()).then(data => {
+        fetch(`/api/stats?window=${currentWindow}`).then(r => r.json()).then(data => {
             const labels = data.map(s => new Date(s.timestamp * 1000).toLocaleTimeString());
             const cpu = data.map(s => s.cpu_percent);
             const mem = data.map(s => s.mem_percent);

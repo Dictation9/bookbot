@@ -1,0 +1,9 @@
+praw
+requests
+rich
+beautifulsoup4
+setproctitle
+customtkinter
+atproto
+Flask>=2.0
+psutil

@@ -2,6 +2,17 @@
 
 A modular and configurable Reddit bot that scans subreddits for book mentions, enriches the data using various web APIs, and provides robust logging and reporting. It's designed for long-term, autonomous operation with both command-line and graphical interfaces.
 
+## 🖥️ Windows 11 Support
+
+Book Bot now includes full Windows 11 support! All Windows-specific components are organized in the `windows/` folder.
+
+**Quick Start for Windows:**
+1. Run `install-windows.bat` to install
+2. Edit `config.ini` with your API credentials  
+3. Use `run-gui-windows.bat` for the GUI or `run-windows.bat` for command line
+
+See `README-Windows-Quick-Start.md` for a quick guide, or `windows/README-Windows.md` for complete Windows documentation.
+
 ## ✨ Core Concepts
 
 This bot operates in two primary modes:
@@ -173,6 +184,8 @@ This script pulls the latest code, restores your `config.ini`, and runs `pip ins
 *   `logs/`: Contains `bot.log` (activity log), `comment_data.log` (raw comment data for debugging), and `cron.log` (output from scheduled tasks).
 *   `handlers/`: Contains the logic for parsing different comment formats (`curly_bracket_handler.py`, `romance_bot_handler.py`) and for fetching data from web sources (`web_search/`).
 *   `email_handlers/`: Contains all scripts related to sending emails, including the utility for splitting large files.
+*   `windows/`: Windows-specific components including batch files, PowerShell scripts, and Windows Task Scheduler integration.
+*   `install-windows.bat`, `run-windows.bat`, `run-gui-windows.bat`: Windows launcher scripts for easy access.
 
 ## 🛠️ Troubleshooting
 

@@ -4,6 +4,27 @@ REM Book Bot Windows Launcher Script
 REM Get the directory where this script is located and go to parent directory
 cd /d "%~dp0\.."
 
+REM Create logs directory if it doesn't exist
+if not exist "logs" mkdir logs
+
+REM Generate timestamp for log file
+for /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') do set "dt=%%a"
+set "YY=%dt:~2,2%" & set "YYYY=%dt:~0,4%" & set "MM=%dt:~4,2%" & set "DD=%dt:~6,2%"
+set "HH=%dt:~8,2%" & set "Min=%dt:~10,2%" & set "Sec=%dt:~12,2%"
+set "timestamp=%YYYY%-%MM%-%DD%_%HH%-%Min%-%Sec%"
+
+REM Redirect all output to log file
+call :main > "logs\cmd_run_%timestamp%.log" 2>&1
+goto :eof
+
+:main
+
+echo ========================================
+echo Book Bot Windows Run Log
+echo Started: %date% %time%
+echo ========================================
+echo.
+
 REM Check if virtual environment exists
 if not exist "venv\Scripts\activate.bat" (
     echo ERROR: Virtual environment not found!
@@ -72,4 +93,12 @@ if exist "config.ini.bak" (
 
 echo.
 echo Bot run finished.
-pause
+echo.
+echo All output has been logged to: logs\cmd_run_%timestamp%.log
+echo.
+echo Press any key to view the log file, or close this window to exit.
+pause >nul
+type "logs\cmd_run_%timestamp%.log"
+echo.
+echo Press any key to exit.
+pause >nul

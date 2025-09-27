@@ -18,7 +18,7 @@ def setup_windows_scheduler():
         config = configparser.ConfigParser()
         config_path = "config.ini"
         if not os.path.exists(config_path):
-            print(f"❌ {config_path} is missing.")
+            print(f"[ERROR] {config_path} is missing.")
             return False
         
         config.read(config_path)
@@ -34,11 +34,11 @@ def setup_windows_scheduler():
         script_path = os.path.join(current_dir, "scheduled_check.py")
         
         if not os.path.exists(python_exe):
-            print(f"❌ Python executable not found: {python_exe}")
+            print(f"[ERROR] Python executable not found: {python_exe}")
             return False
         
         if not os.path.exists(script_path):
-            print(f"❌ Scheduled check script not found: {script_path}")
+            print(f"[ERROR] Scheduled check script not found: {script_path}")
             return False
         
         # Create PowerShell script to set up the task
@@ -65,7 +65,7 @@ if ("$schedule" -match ":") {{
     $times = "$schedule" -split ","
     foreach ($time in $times) {{
         $time = $time.Trim()
-        if ($time -match "^(\d{{1,2}}):(\d{{2}})$") {{
+        if ($time -match "^([0-9]{{1,2}}):([0-9]{{2}})$") {{
             $hour = [int]$matches[1]
             $minute = [int]$matches[2]
             $trigger = New-ScheduledTaskTrigger -Daily -At $hour:$minute
@@ -105,12 +105,12 @@ Write-Host "Schedule: $schedule"
             ], capture_output=True, text=True, cwd=current_dir)
             
             if result.returncode == 0:
-                print("✅ Windows Task Scheduler setup complete!")
+                print("[SUCCESS] Windows Task Scheduler setup complete!")
                 print(f"Task name: BookBot Scheduled Tasks")
                 print(f"Schedule: {schedule}")
                 return True
             else:
-                print(f"❌ Failed to set up Task Scheduler: {result.stderr}")
+                print(f"[ERROR] Failed to set up Task Scheduler: {result.stderr}")
                 return False
                 
         finally:
@@ -121,7 +121,7 @@ Write-Host "Schedule: $schedule"
                 pass
                 
     except Exception as e:
-        print(f"❌ Error setting up Windows Task Scheduler: {e}")
+        print(f"[ERROR] Error setting up Windows Task Scheduler: {e}")
         return False
 
 def remove_windows_scheduler():
@@ -151,10 +151,10 @@ try {
             ], capture_output=True, text=True)
             
             if result.returncode == 0:
-                print("✅ Windows Task Scheduler task removed!")
+                print("[SUCCESS] Windows Task Scheduler task removed!")
                 return True
             else:
-                print(f"❌ Failed to remove Task Scheduler task: {result.stderr}")
+                print(f"[ERROR] Failed to remove Task Scheduler task: {result.stderr}")
                 return False
                 
         finally:
@@ -165,7 +165,7 @@ try {
                 pass
                 
     except Exception as e:
-        print(f"❌ Error removing Windows Task Scheduler task: {e}")
+        print(f"[ERROR] Error removing Windows Task Scheduler task: {e}")
         return False
 
 if __name__ == "__main__":

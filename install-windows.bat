@@ -4,7 +4,7 @@ REM This script launches the Windows installation from the windows/ folder
 
 echo Book Bot Windows Installation
 echo =============================
-echo.
+echo(
 
 REM Check if windows folder exists
 if not exist "windows" (

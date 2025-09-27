@@ -4,7 +4,7 @@ REM This script launches the Windows GUI version of Book Bot
 
 echo Book Bot Windows GUI Launcher
 echo =============================
-echo.
+echo(
 
 REM Check if windows folder exists
 if not exist "windows" (

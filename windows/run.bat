@@ -23,7 +23,7 @@ echo ========================================
 echo Book Bot Windows Run Log
 echo Started: %date% %time%
 echo ========================================
-echo.
+echo(
 
 REM Check if virtual environment exists
 if not exist "venv\Scripts\activate.bat" (
@@ -53,24 +53,24 @@ if exist "windows\windows_task_scheduler.py" (
     python windows\windows_task_scheduler.py
 )
 
-echo.
+echo(
 echo Book Bot - Windows Version
 echo =========================
-echo.
+echo(
 
 REM Read schedule from config.ini
 for /f "tokens=2 delims==" %%a in ('findstr "double_check_times" config.ini') do set "SCHEDULE=%%a"
 if defined SCHEDULE (
     if "%SCHEDULE%"=="" (
-        echo Automated tasks are currently disabled (double_check_times is empty in config.ini).
+        echo No schedule found in config.ini (double_check_times is empty).
     ) else (
         echo Automated tasks are scheduled to run at: %SCHEDULE%
     )
 ) else (
-    echo Automated tasks are currently disabled (double_check_times is empty in config.ini).
+    echo No schedule found in config.ini (double_check_times is empty).
 )
 
-echo.
+echo(
 echo The bot will now perform a one-time scan of the subreddit.
 set /p user_input="Type 'start' and press Enter to begin: "
 
@@ -86,7 +86,7 @@ if exist "config.ini" (
 )
 
 REM Run the main bot
-echo.
+echo(
 echo Starting bot...
 python bookbot.py
 
@@ -95,14 +95,14 @@ if exist "config.ini.bak" (
     move "config.ini.bak" "config.ini" >nul
 )
 
-echo.
+echo(
 echo Bot run finished.
-echo.
+echo(
 echo All output has been logged to: logs\cmd_run_%timestamp%.log
-echo.
+echo(
 echo Press any key to view the log file, or close this window to exit.
 pause >nul
 type "logs\cmd_run_%timestamp%.log"
-echo.
+echo(
 echo Press any key to exit.
 pause >nul

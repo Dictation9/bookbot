@@ -14,7 +14,7 @@ from rich.console import Console
 os.makedirs("logs", exist_ok=True)
 comment_data_logger = logging.getLogger("comment_data")
 comment_data_logger.setLevel(logging.INFO)
-comment_data_handler = logging.FileHandler("logs/comment_data.log")
+comment_data_handler = logging.FileHandler("logs/comment_data.log", encoding='utf-8')
 comment_data_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 if not comment_data_logger.hasHandlers():
     comment_data_logger.addHandler(comment_data_handler)

@@ -16,7 +16,7 @@ import os
 os.makedirs("logs", exist_ok=True)
 bluesky_post_logger = logging.getLogger("bluesky_post_scan")
 bluesky_post_logger.setLevel(logging.INFO)
-bluesky_log_handler = logging.FileHandler("logs/bluesky.log")
+bluesky_log_handler = logging.FileHandler("logs/bluesky.log", encoding='utf-8')
 bluesky_log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 if not bluesky_post_logger.hasHandlers():
     bluesky_post_logger.addHandler(bluesky_log_handler)

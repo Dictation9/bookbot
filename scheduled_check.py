@@ -16,7 +16,7 @@ activity_logger = logging.getLogger("scheduled_check_activity")
 activity_logger.setLevel(logging.INFO)
 # Ensure logs directory exists
 os.makedirs("logs", exist_ok=True)
-activity_handler = logging.FileHandler("logs/bot.log", mode='a') # Append to the main bot log
+activity_handler = logging.FileHandler("logs/bot.log", mode='a', encoding='utf-8') # Append to the main bot log
 activity_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] (Scheduled Check) %(message)s"))
 activity_logger.addHandler(activity_handler)
 

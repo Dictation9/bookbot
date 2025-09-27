@@ -11,7 +11,7 @@ activity_logger = logging.getLogger("manual_enrich_activity")
 activity_logger.setLevel(logging.INFO)
 # Ensure logs directory exists
 os.makedirs("logs", exist_ok=True)
-activity_handler = logging.FileHandler("logs/manual_enrich.log", mode='a') # Separate log for manual enrich
+activity_handler = logging.FileHandler("logs/manual_enrich.log", mode='a', encoding='utf-8') # Separate log for manual enrich
 activity_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] (Manual Enrich) %(message)s"))
 activity_logger.addHandler(activity_handler)
 

@@ -68,7 +68,7 @@ if ("$schedule" -match ":") {{
         if ($time -match "^([0-9]{{1,2}}):([0-9]{{2}})$") {{
             $hour = [int]$matches[1]
             $minute = [int]$matches[2]
-            $trigger = New-ScheduledTaskTrigger -Daily -At $hour:$minute
+            $trigger = New-ScheduledTaskTrigger -Daily -At "$hour:$minute"
             $triggers += $trigger
         }}
     }}

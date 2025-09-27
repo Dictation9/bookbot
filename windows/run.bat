@@ -59,9 +59,13 @@ echo =========================
 echo.
 
 REM Read schedule from config.ini
-for /f "tokens=2 delims==" %%a in ('findstr "double_check_times" config.ini') do set SCHEDULE=%%a
+for /f "tokens=2 delims==" %%a in ('findstr "double_check_times" config.ini') do set "SCHEDULE=%%a"
 if defined SCHEDULE (
-    echo Automated tasks are scheduled to run at: %SCHEDULE%
+    if "%SCHEDULE%"=="" (
+        echo Automated tasks are currently disabled (double_check_times is empty in config.ini).
+    ) else (
+        echo Automated tasks are scheduled to run at: %SCHEDULE%
+    )
 ) else (
     echo Automated tasks are currently disabled (double_check_times is empty in config.ini).
 )

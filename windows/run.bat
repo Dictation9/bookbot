@@ -23,6 +23,9 @@ if not exist "config.ini" (
 REM Activate virtual environment
 call venv\Scripts\activate.bat
 
+REM Set console to UTF-8 encoding for proper Unicode support
+chcp 65001 >nul
+
 REM Setup Windows Task Scheduler if needed
 if exist "windows\windows_task_scheduler.py" (
     echo Setting up scheduled tasks...

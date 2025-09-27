@@ -31,13 +31,24 @@ import sys
 
 # Set up error logging
 logging.basicConfig(filename="logs/error.log", level=logging.ERROR,
-                    format="%(asctime)s [%(levelname)s] %(message)s")
+                    format="%(asctime)s [%(levelname)s] %(message)s", encoding='utf-8')
 # Set up activity logging
 activity_logger = logging.getLogger("bot_activity")
 activity_logger.setLevel(logging.INFO)
-activity_handler = logging.FileHandler("logs/bot.log")
+activity_handler = logging.FileHandler("logs/bot.log", encoding='utf-8')
 activity_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 activity_logger.addHandler(activity_handler)
+
+# Add console handler with UTF-8 encoding for Windows compatibility
+import sys
+if sys.platform == "win32":
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    # Configure console to handle Unicode properly on Windows
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+    activity_logger.addHandler(console_handler)
 
 # Load config
 config = configparser.ConfigParser()

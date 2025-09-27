@@ -15,6 +15,9 @@ if not exist "venv\Scripts\activate.bat" (
 REM Activate virtual environment
 call venv\Scripts\activate.bat
 
+REM Set console to UTF-8 encoding for proper Unicode support
+chcp 65001 >nul
+
 REM Run the GUI application
 echo Launching Book Bot GUI...
 python gui.py

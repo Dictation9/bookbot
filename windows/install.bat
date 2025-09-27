@@ -1,15 +1,42 @@
 @echo off
 echo Installing Book Bot for Windows...
 echo.
+echo Current directory: %CD%
+echo.
 
-REM Check if Python is installed
+REM Check if Python is installed (try multiple commands)
+echo Checking for Python installation...
 python --version >nul 2>&1
-if errorlevel 1 (
-    echo ERROR: Python is not installed or not in PATH
-    echo Please install Python 3.8+ from https://python.org
-    pause
-    exit /b 1
+if not errorlevel 1 (
+    echo Found Python: 
+    python --version
+    set PYTHON_CMD=python
+    goto :python_found
 )
+
+python3 --version >nul 2>&1
+if not errorlevel 1 (
+    echo Found Python3: 
+    python3 --version
+    set PYTHON_CMD=python3
+    goto :python_found
+)
+
+py --version >nul 2>&1
+if not errorlevel 1 (
+    echo Found py launcher: 
+    py --version
+    set PYTHON_CMD=py
+    goto :python_found
+)
+
+echo ERROR: Python is not installed or not in PATH
+echo Please install Python 3.8+ from https://python.org
+echo Make sure to check "Add Python to PATH" during installation
+pause
+exit /b 1
+
+:python_found
 
 REM Check if Git is installed
 git --version >nul 2>&1
@@ -34,7 +61,7 @@ if exist "..\bookbot" (
 
 REM Create virtual environment
 echo Creating Python virtual environment...
-python -m venv venv
+%PYTHON_CMD% -m venv venv
 
 REM Activate virtual environment and install dependencies
 echo Installing dependencies...
@@ -88,7 +115,7 @@ powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut 
 
 REM Setup Windows Task Scheduler
 echo Setting up Windows Task Scheduler...
-python windows\windows_task_scheduler.py
+%PYTHON_CMD% windows\windows_task_scheduler.py
 
 echo.
 echo Installation complete!

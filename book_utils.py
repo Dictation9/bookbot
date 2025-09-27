@@ -94,7 +94,7 @@ def extract_romance_io_link(text):
 # Set up activity logging (for use in both main and handlers)
 activity_logger = logging.getLogger("bot_activity")
 activity_logger.setLevel(logging.INFO)
-activity_handler = logging.FileHandler("logs/bot.log")
+activity_handler = logging.FileHandler("logs/bot.log", encoding='utf-8')
 activity_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 if not activity_logger.hasHandlers():
     activity_logger.addHandler(activity_handler) 

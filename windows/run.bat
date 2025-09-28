@@ -58,16 +58,25 @@ echo(
 echo Book Bot - Windows Version
 echo =========================
 echo(
+echo DEBUG: About to read config file...
 
 REM Read schedule from config.ini
+echo DEBUG: Reading schedule from config.ini...
 set "SCHEDULE="
-for /f "tokens=1,2 delims==" %%a in ('findstr /i "double_check_times" config.ini 2^>nul') do (
+echo DEBUG: About to read config.ini line by line...
+for /f "usebackq tokens=1,2 delims==" %%a in ("config.ini") do (
+    echo DEBUG: Processing line: %%a=%%b
     if /i "%%a"=="double_check_times" (
+        echo DEBUG: Found double_check_times, setting SCHEDULE to: %%b
         set "SCHEDULE=%%b"
+        goto :schedule_found
     )
 )
+:schedule_found
+echo DEBUG: SCHEDULE variable is now: !SCHEDULE!
 if defined SCHEDULE (
     set "SCHEDULE=!SCHEDULE: =!"
+    echo DEBUG: After trimming spaces: !SCHEDULE!
     if "!SCHEDULE!"=="" (
         echo No schedule found in config.ini (double_check_times is empty).
     ) else (
@@ -78,14 +87,20 @@ if defined SCHEDULE (
 )
 
 echo(
+echo DEBUG: Config reading completed successfully.
 echo The bot will now perform a one-time scan of the subreddit.
+echo DEBUG: About to prompt user for input...
 set /p user_input="Type 'start' and press Enter to begin: "
+echo DEBUG: User input received: !user_input!
 
-if not "%user_input%"=="start" (
+echo DEBUG: Checking user input...
+if not "!user_input!"=="start" (
+    echo DEBUG: User input was not 'start', aborting...
     echo Aborted by user. Exiting.
     pause
     exit /b 0
 )
+echo DEBUG: User input was 'start', continuing...
 
 REM Backup config.ini if it exists
 if exist "config.ini" (

@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 REM Book Bot Windows Launcher Script
 
 REM Get the directory where this script is located and go to parent directory
@@ -59,12 +60,18 @@ echo =========================
 echo(
 
 REM Read schedule from config.ini
-for /f "tokens=2 delims==" %%a in ('findstr "double_check_times" config.ini') do set "SCHEDULE=%%a"
+set "SCHEDULE="
+for /f "tokens=1,2 delims==" %%a in ('findstr /i "double_check_times" config.ini 2^>nul') do (
+    if /i "%%a"=="double_check_times" (
+        set "SCHEDULE=%%b"
+    )
+)
 if defined SCHEDULE (
-    if "%SCHEDULE%"=="" (
+    set "SCHEDULE=!SCHEDULE: =!"
+    if "!SCHEDULE!"=="" (
         echo No schedule found in config.ini (double_check_times is empty).
     ) else (
-        echo Automated tasks are scheduled to run at: %SCHEDULE%
+        echo Automated tasks are scheduled to run at: !SCHEDULE!
     )
 ) else (
     echo No schedule found in config.ini (double_check_times is empty).

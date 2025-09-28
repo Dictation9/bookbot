@@ -48,12 +48,12 @@ if not errorlevel 1 (
     echo This may cause issues on Windows. Consider running: pip uninstall gpiozero -y
 )
 
-REM Test Windows Task Scheduler integration
-if exist "windows_task_scheduler.py" (
-    echo ✅ Windows Task Scheduler integration found
-) else (
-    echo ❌ Windows Task Scheduler integration not found!
-)
+REM Test Windows Task Scheduler integration - DISABLED
+REM if exist "windows_task_scheduler.py" (
+REM     echo ✅ Windows Task Scheduler integration found
+REM ) else (
+REM     echo ❌ Windows Task Scheduler integration not found!
+REM )
 
 REM Test batch files
 if exist "run.bat" (

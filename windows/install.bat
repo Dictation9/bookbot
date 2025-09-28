@@ -113,9 +113,9 @@ REM Create desktop shortcut
 echo Creating desktop shortcut...
 powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%USERPROFILE%\Desktop\Book Bot.lnk'); $Shortcut.TargetPath = '%CD%\windows\run_gui.bat'; $Shortcut.WorkingDirectory = '%CD%'; $Shortcut.Description = 'Book Bot GUI'; $Shortcut.Save()"
 
-REM Setup Windows Task Scheduler
-echo Setting up Windows Task Scheduler...
-%PYTHON_CMD% windows\windows_task_scheduler.py
+REM Setup Windows Task Scheduler - DISABLED
+REM echo Setting up Windows Task Scheduler...
+REM %PYTHON_CMD% windows\windows_task_scheduler.py
 
 echo.
 echo Installation complete!

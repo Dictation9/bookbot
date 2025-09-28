@@ -120,13 +120,13 @@ $Shortcut.WorkingDirectory = $PWD
 $Shortcut.Description = "Book Bot GUI"
 $Shortcut.Save()
 
-# Setup Windows Task Scheduler
-Write-Host "Setting up Windows Task Scheduler..." -ForegroundColor Yellow
-if (Test-Path "windows\windows_task_scheduler.py") {
-    python windows\windows_task_scheduler.py
-} else {
-    Write-Host "WARNING: windows\windows_task_scheduler.py not found. Skipping Task Scheduler setup." -ForegroundColor Yellow
-}
+# Setup Windows Task Scheduler - DISABLED
+# Write-Host "Setting up Windows Task Scheduler..." -ForegroundColor Yellow
+# if (Test-Path "windows\windows_task_scheduler.py") {
+#     python windows\windows_task_scheduler.py
+# } else {
+#     Write-Host "WARNING: windows\windows_task_scheduler.py not found. Skipping Task Scheduler setup." -ForegroundColor Yellow
+# }
 
 Write-Host ""
 Write-Host "Installation complete!" -ForegroundColor Green

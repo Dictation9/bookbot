@@ -58,62 +58,69 @@ echo(
 echo Book Bot - Windows Version
 echo =========================
 echo(
-echo DEBUG: About to read config file...
 
-REM Read schedule from config.ini
-echo DEBUG: Reading schedule from config.ini...
-set "SCHEDULE="
-echo DEBUG: About to read config.ini line by line...
+REM Read debug setting from config.ini
+set "DEBUG_MODE=false"
 for /f "usebackq tokens=1,2 delims==" %%a in ("config.ini") do (
-    echo DEBUG: Processing line: %%a=%%b
-    if /i "%%a"=="double_check_times" (
-        echo DEBUG: Found double_check_times, setting SCHEDULE to: %%b
-        set "SCHEDULE=%%b"
-        goto :schedule_found
+    if /i "%%a"=="debug" (
+        set "DEBUG_MODE=%%b"
+        set "DEBUG_MODE=!DEBUG_MODE: =!"
     )
-)
-:schedule_found
-echo DEBUG: SCHEDULE variable is now: !SCHEDULE!
-if defined SCHEDULE (
-    set "SCHEDULE=!SCHEDULE: =!"
-    echo DEBUG: After trimming spaces: !SCHEDULE!
-    if "!SCHEDULE!"=="" (
-        echo No schedule found in config.ini (double_check_times is empty).
-    ) else (
-        echo Automated tasks are scheduled to run at: !SCHEDULE!
-    )
-) else (
-    echo No schedule found in config.ini (double_check_times is empty).
 )
 
+REM Show debug output only if debug is enabled
+if /i "!DEBUG_MODE!"=="true" (
+    echo DEBUG: Debug mode enabled
+    echo DEBUG: About to read config file...
+    echo DEBUG: Skipping schedule reading (scheduled tasks disabled)
+    echo DEBUG: Config reading completed successfully.
+    echo DEBUG: About to prompt user for input...
+)
+
+echo No schedule found in config.ini (double_check_times is empty).
 echo(
-echo DEBUG: Config reading completed successfully.
 echo The bot will now perform a one-time scan of the subreddit.
-echo DEBUG: About to prompt user for input...
 set /p user_input="Type 'start' and press Enter to begin: "
-echo DEBUG: User input received: !user_input!
 
-echo DEBUG: Checking user input...
+if /i "!DEBUG_MODE!"=="true" (
+    echo DEBUG: User input received: !user_input!
+    echo DEBUG: Checking user input...
+)
+
 if not "!user_input!"=="start" (
-    echo DEBUG: User input was not 'start', aborting...
+    if /i "!DEBUG_MODE!"=="true" (
+        echo DEBUG: User input was not 'start', aborting...
+    )
     echo Aborted by user. Exiting.
     pause
     exit /b 0
 )
-echo DEBUG: User input was 'start', continuing...
+
+if /i "!DEBUG_MODE!"=="true" (
+    echo DEBUG: User input was 'start', continuing...
+)
 
 REM Backup config.ini if it exists
 if exist "config.ini" (
+    if /i "!DEBUG_MODE!"=="true" (
+        echo DEBUG: Backing up config.ini
+    )
     copy "config.ini" "config.ini.bak" >nul
 )
 
 REM Run the main bot
 echo(
 echo Starting bot...
+if /i "!DEBUG_MODE!"=="true" (
+    echo DEBUG: Executing: python bookbot.py
+)
 python bookbot.py
 
 REM Restore config.ini if it was overwritten
 if exist "config.ini.bak" (
+    if /i "!DEBUG_MODE!"=="true" (
+        echo DEBUG: Restoring config.ini from backup
+    )
     move "config.ini.bak" "config.ini" >nul
 )
 
